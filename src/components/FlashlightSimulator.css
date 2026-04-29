@@ -8,24 +8,24 @@
 .simulator__visual {
   position: relative;
   width: 200px;
-  height: 360px;
+  height: 400px;
 }
 
 /* Flashlight SVG — centered horizontally, pushed down to leave beam room */
 .simulator__flashlight {
   position: absolute;
-  top: 80px;
+  top: 70px;
   left: 50%;
   transform: translateX(-50%);
-  width: 120px;
-  height: 280px;
+  width: 110px;
+  height: 330px;
   filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
 }
 
-/* Beam container — bottom edge pinned to flashlight bezel top (80 + 56 = 136px) */
+/* Beam container — bottom edge pinned to D4V2 emitter face top (70px + 11px = 81px) */
 .simulator__beam-container {
   position: absolute;
-  bottom: calc(100% - 136px);
+  bottom: calc(100% - 81px);
   left: 0;
   right: 0;
   display: flex;
@@ -111,12 +111,12 @@
   outline: none;
 }
 
-.simulator__button-group:hover rect:last-child {
-  filter: brightness(1.4);
+.simulator__button-group:hover circle:nth-child(3) {
+  filter: brightness(1.15);
 }
 
-.simulator__button-group--pressed rect:last-child {
-  filter: brightness(1.6);
+.simulator__button-group--pressed circle:nth-child(3) {
+  filter: brightness(0.85);
 }
 
 /* Pending input indicator */

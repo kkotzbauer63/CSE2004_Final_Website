@@ -1,4 +1,5 @@
 import { useStateMachine } from "./hooks/useStateMachine.js";
+import { useButtonInput } from "./hooks/useButtonInput.js";
 import FlashlightSimulator from "./components/FlashlightSimulator.jsx";
 import TransitionPanel from "./components/TransitionPanel.jsx";
 import StateMap from "./components/StateMap.jsx";
@@ -20,6 +21,12 @@ export default function App() {
     goToState,
     history,
   } = useStateMachine("off");
+
+  const { buttonHandlers, isButtonPressed, pendingInput } = useButtonInput({
+    handleInput,
+    startRamp,
+    stopRamp,
+  });
 
   return (
     <div className="app">
@@ -57,6 +64,9 @@ export default function App() {
             brightness={brightness}
             level={level}
             lastAction={lastAction}
+            buttonHandlers={buttonHandlers}
+            isButtonPressed={isButtonPressed}
+            pendingInput={pendingInput}
           />
           <TransitionPanel
             transitions={availableTransitions}

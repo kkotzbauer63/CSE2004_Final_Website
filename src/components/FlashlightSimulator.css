@@ -105,3 +105,32 @@
   margin: 8px 0 0;
   line-height: 1.4;
 }
+
+/* Interactive button group */
+.simulator__button-group {
+  outline: none;
+}
+
+.simulator__button-group:hover rect:last-child {
+  filter: brightness(1.4);
+}
+
+.simulator__button-group--pressed rect:last-child {
+  filter: brightness(1.6);
+}
+
+/* Pending input indicator */
+.simulator__status-row--pending {
+  border-bottom: 1px solid #2a2a2c;
+}
+
+.simulator__value--pending {
+  color: #D4A84B;
+  letter-spacing: 0.05em;
+  animation: pending-pulse 0.8s ease-in-out infinite;
+}
+
+@keyframes pending-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}

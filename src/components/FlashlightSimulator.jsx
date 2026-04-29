@@ -4,7 +4,15 @@ import "./FlashlightSimulator.css";
 // Aux LED color cycle
 const AUX_COLORS = ["#ff3333", "#33ff33", "#3388ff", "#ffaa00", "#00dddd", "#cc44ff", "#ffffff"];
 
-export default function FlashlightSimulator({ stateInfo, brightness, level, lastAction }) {
+export default function FlashlightSimulator({
+  stateInfo,
+  brightness,
+  level,
+  lastAction,
+  buttonHandlers,
+  isButtonPressed,
+  pendingInput,
+}) {
   const pct = brightness / 100; // 0–1
   const isOn = brightness > 0;
 
@@ -94,9 +102,28 @@ export default function FlashlightSimulator({ stateInfo, brightness, level, last
             />
           ))}
 
-          {/* Button (side switch) */}
-          <rect x="93" y="145" width="12" height="16" rx="3" fill="#4a4a4c" stroke="#666" strokeWidth="0.5" />
-          <rect x="95" y="148" width="8" height="10" rx="2" fill={isOn ? "#D4A84B" : "#333"} />
+          {/* Button (side switch) — interactive */}
+          <g
+            role="button"
+            aria-label="Flashlight button"
+            className={`simulator__button-group${isButtonPressed ? " simulator__button-group--pressed" : ""}`}
+            {...(buttonHandlers ?? {})}
+            style={{ cursor: "pointer", touchAction: "none", userSelect: "none" }}
+          >
+            {/* Larger transparent hit area for easier tapping */}
+            <rect x="85" y="138" width="30" height="30" rx="4" fill="transparent" />
+            {/* Button housing */}
+            <rect x="93" y="145" width="12" height="16" rx="3" fill="#4a4a4c" stroke="#666" strokeWidth="0.5" />
+            {/* Button cap — depresses slightly when held */}
+            <rect
+              x="95"
+              y={isButtonPressed ? 149 : 148}
+              width="8"
+              height={isButtonPressed ? 9 : 10}
+              rx="2"
+              fill={isOn ? "#D4A84B" : isButtonPressed ? "#777" : "#333"}
+            />
+          </g>
 
           {/* Tail cap */}
           <rect x="28" y="240" width="64" height="20" rx="3" fill="#3a3a3c" stroke="#555" strokeWidth="1" />
@@ -123,6 +150,19 @@ export default function FlashlightSimulator({ stateInfo, brightness, level, last
             {Math.round(brightness)}%
           </span>
         </div>
+        {/* Live pending input sequence indicator */}
+        {pendingInput && (pendingInput.clickCount > 0 || pendingInput.isDown) && (
+          <div className="simulator__status-row simulator__status-row--pending">
+            <span className="simulator__label">INPUT</span>
+            <span className="simulator__value simulator__value--mono simulator__value--pending">
+              {pendingInput.holdDetected
+                ? `${pendingInput.clickCount}H`
+                : pendingInput.isDown
+                  ? `${pendingInput.clickCount + 1}…`
+                  : `${pendingInput.clickCount}C…`}
+            </span>
+          </div>
+        )}
         {lastAction && (
           <div className="simulator__status-row simulator__status-row--action">
             <span className="simulator__label">ACTION</span>

@@ -3,6 +3,7 @@ import { useButtonInput } from "./hooks/useButtonInput.js";
 import FlashlightSimulator from "./components/FlashlightSimulator.jsx";
 import TransitionPanel from "./components/TransitionPanel.jsx";
 import StateMap from "./components/StateMap.jsx";
+import ReferenceGuide from "./components/ReferenceGuide.jsx";
 import "./App.css";
 
 export default function App() {
@@ -79,8 +80,9 @@ export default function App() {
           />
         </div>
 
-        {/* Right column: State Map + History */}
+        {/* Right column: Reference Search + State Map + History */}
         <div className="app__col app__col--right">
+          <ReferenceGuide />
           <StateMap
             currentState={currentState}
             uiMode={uiMode}

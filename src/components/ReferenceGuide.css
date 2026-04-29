@@ -1,0 +1,452 @@
+/* ── ReferenceGuide ─────────────────────────────────────────────────────── */
+
+.refguide {
+  position: relative;
+  background: #1c1c1e;
+  border-bottom: 1px solid #333;
+  z-index: 10;
+}
+
+/* Search row */
+.refguide__search-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0 12px;
+  height: 42px;
+}
+
+.refguide__search-icon {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  color: #D4A84B;
+  width: 20px;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.refguide__search {
+  flex: 1;
+  height: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: 13px;
+  color: #ddd;
+  caret-color: #D4A84B;
+  padding: 0 8px;
+}
+
+.refguide__search::placeholder {
+  color: #555;
+}
+
+.refguide__clear {
+  background: none;
+  border: none;
+  color: #555;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+  flex-shrink: 0;
+}
+
+.refguide__clear:hover {
+  color: #999;
+}
+
+/* Dropdown */
+.refguide__dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #222224;
+  border: 1px solid #333;
+  border-top: none;
+  z-index: 100;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+}
+
+.refguide__dropdown-header {
+  padding: 6px 12px;
+  font-size: 10px;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-bottom: 1px solid #2a2a2c;
+}
+
+.refguide__dropdown-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.refguide__dropdown-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.refguide__dropdown-list::-webkit-scrollbar-track {
+  background: #1c1c1e;
+}
+
+.refguide__dropdown-list::-webkit-scrollbar-thumb {
+  background: #444;
+}
+
+.refguide__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px solid #2a2a2c;
+  padding: 9px 12px;
+  cursor: pointer;
+}
+
+.refguide__item:last-child {
+  border-bottom: none;
+}
+
+.refguide__item:hover {
+  background: #2a2a2c;
+}
+
+.refguide__item-q {
+  font-size: 13px;
+  color: #ccc;
+  flex: 1;
+}
+
+.refguide__badge {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #888;
+  border: 1px solid #444;
+  padding: 2px 5px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.refguide__empty {
+  padding: 14px 12px;
+  font-size: 13px;
+  color: #555;
+  font-style: italic;
+}
+
+/* ── Modal overlay ─────────────────────────────────────────────────────── */
+
+.refguide__overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  z-index: 500;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 16px 24px;
+  overflow-y: auto;
+}
+
+.refguide__modal {
+  width: 100%;
+  max-width: 640px;
+  background: #1c1c1e;
+  border: 1px solid #3a3a3c;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 80px);
+}
+
+/* Modal header */
+.refguide__modal-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 16px 14px;
+  border-bottom: 1px solid #333;
+  flex-shrink: 0;
+}
+
+.refguide__modal-title {
+  flex: 1;
+  margin: 0;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #eee;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.refguide__modal-close {
+  background: none;
+  border: 1px solid #333;
+  color: #666;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 8px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.refguide__modal-close:hover {
+  border-color: #555;
+  color: #aaa;
+}
+
+/* Modal body */
+.refguide__modal-body {
+  overflow-y: auto;
+  padding: 14px 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.refguide__modal-body::-webkit-scrollbar {
+  width: 4px;
+}
+
+.refguide__modal-body::-webkit-scrollbar-track {
+  background: #1c1c1e;
+}
+
+.refguide__modal-body::-webkit-scrollbar-thumb {
+  background: #444;
+}
+
+/* Summary */
+.refguide__summary {
+  margin: 0;
+  font-size: 14px;
+  color: #bbb;
+  line-height: 1.55;
+}
+
+/* UI requirement row */
+.refguide__meta-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.refguide__meta-label {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: #555;
+  text-transform: uppercase;
+}
+
+.refguide__meta-value {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border: 1px solid transparent;
+}
+
+.refguide__meta-value--full {
+  color: #D4A84B;
+  border-color: rgba(212, 168, 75, 0.35);
+  background: rgba(212, 168, 75, 0.08);
+}
+
+.refguide__meta-value--any {
+  color: #7a9a7a;
+  border-color: rgba(122, 154, 122, 0.35);
+  background: rgba(122, 154, 122, 0.08);
+}
+
+/* Sections */
+.refguide__section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.refguide__section-title {
+  margin: 0;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #666;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #2a2a2c;
+}
+
+/* Steps */
+.refguide__steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid #2a2a2c;
+}
+
+.refguide__step {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 7px 10px;
+  border-bottom: 1px solid #2a2a2c;
+  flex-wrap: wrap;
+}
+
+.refguide__step:last-child {
+  border-bottom: none;
+}
+
+.refguide__step-from {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 10px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  min-width: 90px;
+  flex-shrink: 0;
+}
+
+.refguide__step-input {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: #D4A84B;
+  background: rgba(212, 168, 75, 0.1);
+  padding: 1px 6px;
+  border: 1px solid rgba(212, 168, 75, 0.2);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.refguide__step-desc {
+  font-size: 13px;
+  color: #bbb;
+  flex: 1;
+}
+
+/* Config menu items */
+.refguide__menu-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid #2a2a2c;
+}
+
+.refguide__menu-item {
+  padding: 10px 12px;
+  border-bottom: 1px solid #2a2a2c;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.refguide__menu-item:last-child {
+  border-bottom: none;
+}
+
+.refguide__menu-item-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.refguide__menu-item-num {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: #D4A84B;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  min-width: 42px;
+  flex-shrink: 0;
+}
+
+.refguide__menu-item-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ccc;
+}
+
+.refguide__menu-item-desc {
+  margin: 0;
+  font-size: 12px;
+  color: #999;
+  line-height: 1.5;
+}
+
+.refguide__menu-item-detail {
+  margin: 0;
+  font-size: 11px;
+  color: #666;
+  line-height: 1.5;
+  font-style: italic;
+}
+
+/* Notes */
+.refguide__notes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.refguide__note {
+  font-size: 12px;
+  color: #888;
+  line-height: 1.55;
+  padding: 5px 0 5px 14px;
+  border-bottom: 1px solid #222;
+  position: relative;
+}
+
+.refguide__note:last-child {
+  border-bottom: none;
+}
+
+.refguide__note::before {
+  content: "—";
+  position: absolute;
+  left: 0;
+  color: #444;
+  font-size: 10px;
+  top: 7px;
+}
+
+/* ── Mobile ─────────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .refguide__overlay {
+    padding: 16px 8px 16px;
+    align-items: flex-start;
+  }
+
+  .refguide__modal {
+    max-height: calc(100vh - 32px);
+  }
+
+  .refguide__step {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .refguide__step-from {
+    min-width: auto;
+  }
+}

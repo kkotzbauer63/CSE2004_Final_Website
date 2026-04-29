@@ -1,0 +1,107 @@
+.simulator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.simulator__visual {
+  position: relative;
+  width: 200px;
+  height: 360px;
+}
+
+/* Flashlight SVG — centered horizontally, pushed down to leave beam room */
+.simulator__flashlight {
+  position: absolute;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120px;
+  height: 280px;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
+}
+
+/* Beam container — bottom edge pinned to flashlight bezel top (80 + 56 = 136px) */
+.simulator__beam-container {
+  position: absolute;
+  bottom: calc(100% - 136px);
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.simulator__beam {
+  transition: width 0.2s ease;
+}
+
+.simulator__beam-glow {
+  width: 100%;
+  border-radius: 50% 50% 0 0;
+}
+
+/* Status readout */
+.simulator__status {
+  width: 100%;
+  max-width: 260px;
+  border: 1px solid #333;
+  background: #1c1c1e;
+  padding: 12px;
+}
+
+.simulator__status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 4px 0;
+  border-bottom: 1px solid #2a2a2c;
+}
+
+.simulator__status-row:last-of-type {
+  border-bottom: none;
+}
+
+.simulator__status-row--action {
+  border-bottom: none;
+}
+
+.simulator__label {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: #666;
+  text-transform: uppercase;
+}
+
+.simulator__value {
+  font-size: 14px;
+  color: #ccc;
+}
+
+.simulator__value--state {
+  color: #D4A84B;
+  font-weight: 600;
+}
+
+.simulator__value--mono {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 13px;
+}
+
+.simulator__value--action {
+  font-size: 12px;
+  color: #999;
+  text-align: right;
+  max-width: 160px;
+}
+
+.simulator__description {
+  font-size: 11px;
+  color: #666;
+  margin: 8px 0 0;
+  line-height: 1.4;
+}

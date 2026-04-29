@@ -108,3 +108,33 @@
   border-radius: 1px;
   flex-shrink: 0;
 }
+
+/* ── Ramp expanded view ─────────────────────────────────────────── */
+
+/* Zone labels: TURBO, CEIL, FLOOR */
+.statemap__ramp-marker {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 9px;
+  fill: #666;
+  pointer-events: none;
+  user-select: none;
+  letter-spacing: 0.04em;
+}
+
+/* 1H ↑ / 2H ↓ self-transition annotations inside the ramp rect */
+.statemap__ramp-action {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 10px;
+  fill: rgba(212, 168, 75, 0.75);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Current level number shown to the right of the indicator line */
+.statemap__ramp-level {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  fill: #D4A84B;
+  pointer-events: none;
+  user-select: none;
+}

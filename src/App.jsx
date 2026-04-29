@@ -83,6 +83,7 @@ export default function App() {
             currentState={currentState}
             uiMode={uiMode}
             onGoToState={goToState}
+            level={level}
           />
 
           {/* Input notation reference */}

@@ -1,8 +1,4 @@
-import { useMemo } from "react";
 import "./FlashlightSimulator.css";
-
-// Aux LED color cycle
-const AUX_COLORS = ["#ff3333", "#33ff33", "#3388ff", "#ffaa00", "#00dddd", "#cc44ff", "#ffffff"];
 
 export default function FlashlightSimulator({
   stateInfo,
@@ -12,6 +8,7 @@ export default function FlashlightSimulator({
   buttonHandlers,
   isButtonPressed,
   pendingInput,
+  auxDisplay,
 }) {
   const pct = brightness / 100; // 0–1
   const isOn = brightness > 0;
@@ -22,18 +19,23 @@ export default function FlashlightSimulator({
   const coreOpacity = 0.1 + pct * 0.6;
   const glowOpacity = pct * 0.3;
 
-  // Derive aux LED color from state — shows on button when light is off
-  const auxColor = useMemo(() => {
-    if (isOn) return null;
-    if (!stateInfo) return AUX_COLORS[0];
-    const hash = stateInfo.name.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-    return AUX_COLORS[hash % AUX_COLORS.length];
-  }, [stateInfo, isOn]);
+  // Resolve button indicator color and pattern from auxDisplay
+  const auxColor   = auxDisplay?.color ?? null;   // hex or null
+  const auxPattern = auxDisplay?.pattern ?? null; // "off"|"low"|"high"|"blinking"|null
 
-  // Button face and ring color driven by state
-  const buttonFill  = isButtonPressed ? "#555" : isOn ? "#D4A84B" : (auxColor ?? "#d8d8d8");
+  // Button face: pressed → dark; on → amber; aux pattern off → neutral; else → aux color
+  const buttonFill =
+    isButtonPressed ? "#555"
+    : isOn          ? "#D4A84B"
+    : (!auxColor || auxPattern === "off") ? "#d8d8d8"
+    : auxColor;
+
+  // Ring matches button color
   const ringStroke  = isOn ? "#D4A84B" : (auxColor ?? "#a2e4ff");
-  const ringOpacity = isOn ? 0.9 : 0.85;
+  const ringOpacity = isOn ? 0.9 : auxPattern === "low" ? 0.45 : 0.85;
+
+  // Add blinking class when aux is in blinking pattern and light is off
+  const isBlinking  = !isOn && auxPattern === "blinking";
 
   return (
     <div className="simulator">
@@ -159,7 +161,11 @@ export default function FlashlightSimulator({
           <g
             role="button"
             aria-label="Flashlight button"
-            className={`simulator__button-group${isButtonPressed ? " simulator__button-group--pressed" : ""}`}
+            className={[
+              "simulator__button-group",
+              isButtonPressed ? "simulator__button-group--pressed" : "",
+              isBlinking      ? "simulator__button-group--blinking" : "",
+            ].filter(Boolean).join(" ")}
             {...(buttonHandlers ?? {})}
             style={{ cursor: "pointer", touchAction: "none", userSelect: "none" }}
           >
@@ -236,6 +242,17 @@ export default function FlashlightSimulator({
             {Math.round(brightness)}%
           </span>
         </div>
+        {/* Aux LED status — only shown in off/lockout when not ramping */}
+        {auxDisplay && (
+          <div className="simulator__status-row">
+            <span className="simulator__label">AUX</span>
+            <span className="simulator__value simulator__value--mono simulator__value--aux">
+              {auxDisplay.pattern === "off"
+                ? "off"
+                : `${auxDisplay.pattern} · ${auxDisplay.colorName}`}
+            </span>
+          </div>
+        )}
         {/* Live pending input sequence indicator */}
         {pendingInput && (pendingInput.clickCount > 0 || pendingInput.isDown) && (
           <div className="simulator__status-row simulator__status-row--pending">

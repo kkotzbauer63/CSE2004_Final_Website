@@ -119,6 +119,23 @@
   filter: brightness(0.85);
 }
 
+.simulator__button-group--blinking {
+  animation: button-blink 0.9s ease-in-out infinite;
+}
+
+@keyframes button-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.12; }
+}
+
+.simulator__value--aux {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  color: #aaa;
+  text-transform: lowercase;
+  letter-spacing: 0.03em;
+}
+
 /* Pending input indicator */
 .simulator__status-row--pending {
   border-bottom: 1px solid #2a2a2c;

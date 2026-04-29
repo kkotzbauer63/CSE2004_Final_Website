@@ -1,10 +1,32 @@
 // useStateMachine.js — Thin bridge between the state machine engine and React
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import {
   processInput,
   getAvailableTransitions,
   getStateInfo,
 } from "../stateMachine/engine.js";
+
+// Aux LED patterns (cycle order matches Anduril firmware)
+export const AUX_PATTERNS = ["off", "low", "high", "blinking"];
+
+// Aux LED colors (cycle order matches Anduril firmware)
+export const AUX_COLORS = [
+  "red", "yellow", "green", "cyan", "blue", "purple", "white", "disco", "rainbow", "voltage",
+];
+
+// Hex representation used for the button indicator in the simulator
+const AUX_COLOR_HEX = {
+  red:     "#ff3333",
+  yellow:  "#ffaa00",
+  green:   "#33ff33",
+  cyan:    "#00dddd",
+  blue:    "#3388ff",
+  purple:  "#cc44ff",
+  white:   "#ffffff",
+  disco:   "#ff88dd",   // magenta-ish representative
+  rainbow: "#88ddff",   // sky-blue representative
+  voltage: "#9955ee",   // purple = full-battery representative
+};
 
 // Anduril brightness: levels 1–150
 // Full ramp takes ~2.5s → 150 levels / 2500ms = 1 level per ~16.7ms
@@ -25,6 +47,11 @@ export function useStateMachine(initialState = "off") {
   const [level, setLevel] = useState(0); // 0 = off, 1-150 = on
   const rampTimer = useRef(null);
   const rampDirection = useRef(null); // "up" or "down"
+
+  // Aux LED state — off mode and lockout mode are configured independently.
+  // Defaults match common Anduril out-of-box settings.
+  const [auxOff,     setAuxOff]     = useState({ pattern: 2, color: 9 }); // high, voltage
+  const [auxLockout, setAuxLockout] = useState({ pattern: 1, color: 0 }); // low,  red
 
   // Brightness hints mapped to Anduril levels
   const LEVEL_HINTS = {
@@ -54,6 +81,16 @@ export function useStateMachine(initialState = "off") {
         // Switch UI mode if the transition calls for it
         if (result.transition?.setsUiMode) {
           setUiMode(result.transition.setsUiMode);
+        }
+
+        // Aux LED pattern/color cycling — affects the mode we were IN, not the target
+        if (result.transition?.auxEffect) {
+          const setter = currentState === "lockout" ? setAuxLockout : setAuxOff;
+          if (result.transition.auxEffect === "nextPattern") {
+            setter((prev) => ({ ...prev, pattern: (prev.pattern + 1) % AUX_PATTERNS.length }));
+          } else if (result.transition.auxEffect === "nextColor") {
+            setter((prev) => ({ ...prev, color: (prev.color + 1) % AUX_COLORS.length }));
+          }
         }
 
         // Update level based on transition type
@@ -140,6 +177,21 @@ export function useStateMachine(initialState = "off") {
   const stateInfo = getStateInfo(currentState);
   const brightness = level === 0 ? 0 : levelToPercent(level);
 
+  // Resolved aux LED display for the current state.
+  // Only active when main emitters are off (off/lockout modes).
+  const auxDisplay = useMemo(() => {
+    if (currentState !== "off" && currentState !== "lockout") return null;
+    const settings    = currentState === "lockout" ? auxLockout : auxOff;
+    const patternName = AUX_PATTERNS[settings.pattern];
+    if (patternName === "off") return { color: null, colorName: null, pattern: "off" };
+    const colorName   = AUX_COLORS[settings.color];
+    return {
+      color:     AUX_COLOR_HEX[colorName],
+      colorName,
+      pattern:   patternName,
+    };
+  }, [currentState, auxOff, auxLockout]);
+
   return {
     currentState,
     stateInfo,
@@ -154,5 +206,6 @@ export function useStateMachine(initialState = "off") {
     stopRamp,
     goToState,
     history,
+    auxDisplay,
   };
 }

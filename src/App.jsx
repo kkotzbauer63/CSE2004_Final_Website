@@ -20,6 +20,7 @@ export default function App() {
     stopRamp,
     goToState,
     history,
+    auxDisplay,
   } = useStateMachine("off");
 
   const { buttonHandlers, isButtonPressed, pendingInput } = useButtonInput({
@@ -67,6 +68,7 @@ export default function App() {
             buttonHandlers={buttonHandlers}
             isButtonPressed={isButtonPressed}
             pendingInput={pendingInput}
+            auxDisplay={auxDisplay}
           />
           <TransitionPanel
             transitions={availableTransitions}

@@ -19,21 +19,37 @@ export const TACTICAL_STATES = new Set([
   "TACTICAL_MODE", "TACTICAL_SLOT_1", "TACTICAL_SLOT_2", "TACTICAL_SLOT_3", "TACTICAL_CONFIG",
 ]);
 
+// States that trigger the expanded ramp view
+export const RAMP_EXPANDED_STATES = new Set(["RAMP", "SUNSET_TIMER"]);
+
+// States that trigger the expanded aux-config views
+export const AUX_PATTERN_STATES = new Set(["AUX_PATTERN_CONFIG"]);
+export const AUX_COLOR_STATES   = new Set(["AUX_COLOR_CONFIG"]);
+
 export const NODE_W = 110;
 export const NODE_H = 36;
 export const CLUSTER_W = 130;
 export const CLUSTER_H = 42;
 
 // Advanced UI default view (blinky + strobe shown as container cluster nodes)
+// viewBox: "0 0 650 480"
 export const DEFAULT_POSITIONS = {
-  OFF:            { x: 280, y: 30 },
-  RAMP:           { x: 280, y: 140 },
-  LOCKOUT:        { x: 80,  y: 85 },
-  BLINKY_GROUP:   { x: 500, y: 30 },
-  STROBE_GROUP:   { x: 80,  y: 230 },
-  MOMENTARY_MODE: { x: 220, y: 300 },
-  TACTICAL_MODE:  { x: 50,  y: 330 },
-  MISC_CONFIG:    { x: 480, y: 140 },
+  OFF:                { x: 280, y: 30  },
+  RAMP:               { x: 280, y: 140 },
+  LOCKOUT:            { x: 80,  y: 85  },
+  BLINKY_GROUP:       { x: 500, y: 30  },
+  STROBE_GROUP:       { x: 80,  y: 230 },
+  MOMENTARY_MODE:     { x: 220, y: 305 },
+  TACTICAL_MODE:      { x: 50,  y: 330 },
+  MISC_CONFIG:        { x: 480, y: 140 },
+  // Aux config states (accessible from Off via 7C / 7H)
+  AUX_PATTERN_CONFIG: { x: 490, y: 80  },
+  AUX_COLOR_CONFIG:   { x: 490, y: 195 },
+  // Simple UI config (accessible from Off via 10H in Advanced UI)
+  SIMPLE_UI_CONFIG:   { x: 80,  y: 10  },
+  // Version check / factory reset
+  VERSION_CHECK:      { x: 290, y: 385 },
+  FACTORY_RESET:      { x: 490, y: 305 },
 };
 
 // Simple UI view (fewer states, no cluster nodes)
@@ -46,7 +62,7 @@ export const SIMPLE_POSITIONS = {
 
 // Expanded blinky view (Advanced UI only)
 export const BLINKY_POSITIONS = {
-  OFF:                { x: 250, y: 10 },
+  OFF:                { x: 250, y: 10  },
   BATTERY_CHECK:      { x: 100, y: 110 },
   TEMPERATURE_CHECK:  { x: 400, y: 110 },
   BEACON:             { x: 400, y: 220 },
@@ -73,8 +89,9 @@ export const RAMP_W = 80;
 export const RAMP_H = 280;
 
 export const RAMP_EXPANDED_POSITIONS = {
-  OFF:                { x: 30,  y: 70 },
+  OFF:                { x: 30,  y: 70  },
   LOCKOUT:            { x: 30,  y: 210 },
+  SUNSET_TIMER:       { x: 360, y: 45  },
   MOMENTARY_MODE:     { x: 360, y: 115 },
   RAMP_CONFIG:        { x: 360, y: 185 },
   RAMP_EXTRAS_CONFIG: { x: 360, y: 255 },
@@ -82,17 +99,17 @@ export const RAMP_EXPANDED_POSITIONS = {
 
 // Expanded lockout view
 export const LOCKOUT_POSITIONS = {
-  OFF:              { x: 30,  y: 60 },
+  OFF:              { x: 30,  y: 60  },
   LOCKOUT:          { x: 195, y: 105 },
-  RAMP:             { x: 360, y: 60 },
+  RAMP:             { x: 360, y: 60  },
   AUTO_LOCK_CONFIG: { x: 195, y: 200 },
 };
 
 // Expanded tactical mode view
 export const TACTICAL_POSITIONS = {
-  OFF:              { x: 30,  y: 90 },
+  OFF:              { x: 30,  y: 90  },
   TACTICAL_MODE:    { x: 215, y: 110 },
-  TACTICAL_SLOT_1:  { x: 400, y: 35 },
+  TACTICAL_SLOT_1:  { x: 400, y: 35  },
   TACTICAL_SLOT_2:  { x: 400, y: 115 },
   TACTICAL_SLOT_3:  { x: 400, y: 195 },
   TACTICAL_CONFIG:  { x: 30,  y: 180 },

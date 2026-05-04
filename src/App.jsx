@@ -19,7 +19,8 @@ import "./App.css";
 // Demo values shown while in the respective readout states.
 const DEMO_VOLTAGE     = 4.16;
 const DEMO_TEMPERATURE = 25;
-const DEMO_VERSION     = "359.2024-01-15";
+// Format: MODEL-YYYY-MM-DD-SINCE-DIRTY (Anduril 2 from 2023-12 or later)
+const DEMO_VERSION     = "0281-2025-07-07-0-0";
 
 /** How many configurable items does a config menu node have? */
 function getItemCount(node) {
@@ -38,6 +39,7 @@ export default function App() {
     lastAction,
     brightness,
     level,
+    rampStyle,
     availableTransitions,
     handleInput,
     startRamp,
@@ -45,6 +47,10 @@ export default function App() {
     goToState,
     history,
     auxDisplay,
+    auxPatternIndex,
+    auxColorIndex,
+    sunsetMinutes,
+    addSunsetMinutes,
   } = useStateMachine("OFF");
 
   // ── Normal button input (used when NOT in a config menu) ────────────────
@@ -62,7 +68,8 @@ export default function App() {
     return null;
   }, [currentState]);
 
-  const loopReadout = currentState === "BATTERY_CHECK" || currentState === "TEMPERATURE_CHECK";
+  // VERSION_CHECK loops until 1C (same as battery/temp check)
+  const loopReadout = currentState === "BATTERY_CHECK" || currentState === "TEMPERATURE_CHECK" || currentState === "VERSION_CHECK";
   const { readoutLevel, isPlaying: readoutPlaying } = useReadout(readoutSequence, {
     loop: loopReadout,
   });
@@ -82,6 +89,10 @@ export default function App() {
   // Keep a ref to isButtonPressed so the effect can read it without re-running
   const isButtonPressedRef = useRef(false);
   isButtonPressedRef.current = isButtonPressed;
+
+  // Track level in a ref to read current value inside sunset interval without stale closure
+  const levelRef = useRef(level);
+  levelRef.current = level;
 
   // Start the config menu whenever we enter a CONFIG_MENU state
   useEffect(() => {
@@ -107,6 +118,33 @@ export default function App() {
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentState]);
+
+  // ── Sunset timer hold-counting ──────────────────────────────────────────
+  // While in SUNSET_TIMER with the button held, add 5 min per second and blink.
+  const [sunsetBlink, setSunsetBlink] = useState(false);
+  const sunsetBlinkTimeoutRef = useRef(null);
+  useEffect(() => {
+    if (currentState !== "SUNSET_TIMER" || !isButtonPressed) return;
+    const id = setInterval(() => {
+      addSunsetMinutes(5, levelRef.current);
+      setSunsetBlink(true);
+      sunsetBlinkTimeoutRef.current = setTimeout(() => setSunsetBlink(false), 120);
+    }, 1000);
+    return () => {
+      clearInterval(id);
+      clearTimeout(sunsetBlinkTimeoutRef.current);
+      setSunsetBlink(false);
+    };
+  }, [currentState, isButtonPressed, addSunsetMinutes]);
+
+  // ── Aux color hold-cycling ───────────────────────────────────────────────
+  // While in AUX_COLOR_CONFIG with the button still held, advance one color
+  // every second (mirrors Anduril's hold-to-scroll behavior).
+  useEffect(() => {
+    if (currentState !== "AUX_COLOR_CONFIG" || !isButtonPressed) return;
+    const id = setInterval(() => handleInput("7H"), 1000);
+    return () => clearInterval(id);
+  }, [currentState, isButtonPressed, handleInput]);
 
   // ── Button handler routing ───────────────────────────────────────────────
   // When a config menu is active, raw press/release events go to useConfigMenu.
@@ -134,11 +172,15 @@ export default function App() {
   const activeIsButtonPressed = configActive ? configBtnPressed : isButtonPressed;
 
   // ── Brightness override priority ─────────────────────────────────────────
-  // Config menu > readout > normal state brightness
+  // Config menu > readout > sunset blink > normal state brightness
   const overrideLevel =
     configActive      ? configLevel :
     readoutPlaying    ? readoutLevel :
+    sunsetBlink       ? 0 :
     null;
+
+  // ── Transitions for panel (exclude state-map-only entries) ─────────────
+  const panelTransitions = availableTransitions.filter((t) => !t.stateMapOnly);
 
   // ── Config info passed down for status display ───────────────────────────
   const configInfo = configActive
@@ -194,7 +236,7 @@ export default function App() {
             configInfo={configInfo}
           />
           <TransitionPanel
-            transitions={availableTransitions}
+            transitions={panelTransitions}
             onInput={handleInput}
             onRampStart={startRamp}
             onRampStop={stopRamp}
@@ -211,6 +253,10 @@ export default function App() {
             onGoToState={goToState}
             onInput={handleInput}
             level={level}
+            rampStyle={rampStyle}
+            auxPatternIndex={auxPatternIndex}
+            auxColorIndex={auxColorIndex}
+            sunsetMinutes={sunsetMinutes}
           />
 
           {/* Input notation reference */}

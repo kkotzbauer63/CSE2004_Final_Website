@@ -1,4 +1,4 @@
-// Expanded ramp view — shown whenever currentState === "ramp"
+// Expanded ramp view — shown whenever currentState is RAMP or SUNSET_TIMER
 import { stateGroups } from "../../stateMachine/states.js";
 import { getStateInfo, getAvailableTransitions } from "../../stateMachine/engine.js";
 import {
@@ -7,33 +7,53 @@ import {
 } from "./statemapLayouts.js";
 import { StateNode } from "./StateMapPrimitives.jsx";
 
+const NUM_STEPS = 7; // default Anduril stepped ramp count
+
 function rampLevelY(lv) {
   const clamped = Math.max(1, Math.min(150, lv));
   return RAMP_Y + RAMP_H * (1 - (clamped - 1) / 149);
 }
 
-export default function StateMapRamp({ isAdvanced, level, reachableFromCurrent, onGoToState, uiMode }) {
+export default function StateMapRamp({
+  isAdvanced, currentState, level, rampStyle,
+  reachableFromCurrent, onGoToState, uiMode,
+}) {
   const turboLineY = RAMP_Y + 40;
   const ceilLineY  = RAMP_Y + 80;
   const floorLineY = RAMP_Y + 240;
   const levelY     = level > 0 ? rampLevelY(level) : null;
 
-  const rampTransitions = getAvailableTransitions("RAMP", uiMode);
+  // Which state to pull transitions from
+  const activeState = (currentState === "SUNSET_TIMER") ? "SUNSET_TIMER" : "RAMP";
+  const rampTransitions = getAvailableTransitions(activeState, uiMode);
   const rampEdgeMap = new Map();
   for (const t of rampTransitions) {
-    if (t.target === "RAMP" || t.target === "_self" || !RAMP_EXPANDED_POSITIONS[t.target]) continue;
+    if (t.target === activeState || t.target === "_self" || !RAMP_EXPANDED_POSITIONS[t.target]) continue;
     if (!rampEdgeMap.has(t.target)) rampEdgeMap.set(t.target, { target: t.target, inputs: [] });
     rampEdgeMap.get(t.target).inputs.push(t.action);
   }
   const rampEdges = Array.from(rampEdgeMap.values());
 
   const leftNodeIds  = ["OFF", "LOCKOUT"];
-  const rightNodeIds = isAdvanced ? ["MOMENTARY_MODE", "RAMP_CONFIG", "RAMP_EXTRAS_CONFIG"] : [];
+  const rightNodeIds = isAdvanced
+    ? ["SUNSET_TIMER", "MOMENTARY_MODE", "RAMP_CONFIG", "RAMP_EXTRAS_CONFIG"]
+    : [];
+
+  // Stepped tick Y positions — evenly spaced from floor to ceiling (inclusive)
+  const steppedTicks = rampStyle === "stepped"
+    ? Array.from({ length: NUM_STEPS }, (_, i) =>
+        floorLineY + (ceilLineY - floorLineY) * (i / (NUM_STEPS - 1))
+      )
+    : [];
+
+  const isSunset   = currentState === "SUNSET_TIMER";
+  const rampLabel  = isSunset ? "SUNSET TIMER" : "RAMP";
+  const titleLabel = isSunset ? "Sunset Timer" : "Ramp Mode";
 
   return (
     <div className="statemap">
       <div className="statemap__header">
-        <h3 className="statemap__title">Ramp Mode</h3>
+        <h3 className="statemap__title">{titleLabel}</h3>
         <span className="statemap__mode">{isAdvanced ? "Advanced UI" : "Simple UI"}</span>
       </div>
       <div className="statemap__container">
@@ -57,14 +77,16 @@ export default function StateMapRamp({ isAdvanced, level, reachableFromCurrent, 
           <rect
             x={RAMP_X} y={RAMP_Y} width={RAMP_W} height={RAMP_H} rx="2"
             fill="url(#rampGrad)"
-            stroke="#D4A84B" strokeWidth="2" strokeOpacity="0.6"
+            stroke="#D4A84B"
+            strokeWidth={isSunset ? 2.5 : 2}
+            strokeOpacity={isSunset ? 0.9 : 0.6}
           />
           <text
             x={RAMP_X + RAMP_W / 2} y={RAMP_Y - 9}
             textAnchor="middle" className="statemap__ramp-marker"
             style={{ fill: "#D4A84B", fontSize: "11px", letterSpacing: "0.1em" }}
           >
-            RAMP
+            {rampLabel}
           </text>
 
           {/* Zone dashed lines */}
@@ -78,14 +100,30 @@ export default function StateMapRamp({ isAdvanced, level, reachableFromCurrent, 
             stroke="#D4A84B" strokeWidth="1" strokeOpacity="0.20" strokeDasharray="3 3"
           />
 
+          {/* Stepped ramp tick marks */}
+          {steppedTicks.map((ty, i) => (
+            <line
+              key={i}
+              x1={RAMP_X + 4} y1={ty}
+              x2={RAMP_X + RAMP_W - 4} y2={ty}
+              stroke="#D4A84B" strokeWidth="1.5" strokeOpacity="0.55"
+            />
+          ))}
+
           {/* Zone labels — right of ramp rect */}
           <text x={RAMP_X + RAMP_W + 6} y={turboLineY + 4} className="statemap__ramp-marker">TURBO</text>
           <text x={RAMP_X + RAMP_W + 6} y={ceilLineY  + 4} className="statemap__ramp-marker">CEIL</text>
           <text x={RAMP_X + RAMP_W + 6} y={floorLineY + 4} className="statemap__ramp-marker">FLOOR</text>
 
           {/* Self-transition annotations inside ramp rect */}
-          <text x={RAMP_X + RAMP_W / 2} y={RAMP_Y + 145} textAnchor="middle" className="statemap__ramp-action">1H ↑</text>
-          <text x={RAMP_X + RAMP_W / 2} y={RAMP_Y + 170} textAnchor="middle" className="statemap__ramp-action">2H ↓</text>
+          <text x={RAMP_X + RAMP_W / 2} y={RAMP_Y + 135} textAnchor="middle" className="statemap__ramp-action">1H ↑</text>
+          <text x={RAMP_X + RAMP_W / 2} y={RAMP_Y + 155} textAnchor="middle" className="statemap__ramp-action">2H ↓</text>
+          {isAdvanced && (
+            <text x={RAMP_X + RAMP_W / 2} y={RAMP_Y + 178} textAnchor="middle" className="statemap__ramp-action"
+              style={{ fontSize: "8px", opacity: 0.65 }}>
+              6C {rampStyle === "stepped" ? "→ smooth" : "→ stepped"}
+            </text>
+          )}
 
           {/* Current level indicator */}
           {levelY !== null && (
@@ -136,7 +174,7 @@ export default function StateMapRamp({ isAdvanced, level, reachableFromCurrent, 
               <StateNode
                 key={stateId}
                 pos={pos} info={info}
-                isCurrent={false}
+                isCurrent={stateId === currentState}
                 isReachable={reachableFromCurrent.has(stateId)}
                 onClick={() => onGoToState(stateId)}
               />

@@ -20,6 +20,8 @@ import {
   MISC_CONFIG, TACTICAL_CONFIG, CHANNEL_MODE_CONFIG,
 } from "./nodes/configMenus.js";
 import { VERSION_CHECK, FACTORY_RESET } from "./nodes/actions.js";
+import { AUX_PATTERN_CONFIG, AUX_COLOR_CONFIG } from "./nodes/auxConfig.js";
+import { SUNSET_TIMER } from "./nodes/sunsetTimer.js";
 
 // ─── Full node list ───────────────────────────────────────────────────────────
 
@@ -37,7 +39,11 @@ const ALL_NODES = [
   RAMP_CONFIG, RAMP_EXTRAS_CONFIG, SIMPLE_UI_CONFIG,
   VOLTAGE_CONFIG, THERMAL_CONFIG, AUTO_LOCK_CONFIG,
   MISC_CONFIG, TACTICAL_CONFIG, CHANNEL_MODE_CONFIG,
-  // Actions
+  // Aux config states
+  AUX_PATTERN_CONFIG, AUX_COLOR_CONFIG,
+  // Sunset timer
+  SUNSET_TIMER,
+  // Special action states
   VERSION_CHECK, FACTORY_RESET,
 ];
 

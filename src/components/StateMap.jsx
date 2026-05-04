@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { getAvailableTransitions, getVisibleStates } from "../stateMachine/engine.js";
 import {
   BLINKY_STATES, STROBE_STATES, LOCKOUT_STATES, TACTICAL_STATES,
+  RAMP_EXPANDED_STATES, AUX_PATTERN_STATES, AUX_COLOR_STATES,
   DEFAULT_POSITIONS, SIMPLE_POSITIONS,
 } from "./statemap/statemapLayouts.js";
 import StateMapSimple    from "./statemap/StateMapSimple.jsx";
@@ -12,15 +13,24 @@ import StateMapBlinky    from "./statemap/StateMapBlinky.jsx";
 import StateMapStrobe    from "./statemap/StateMapStrobe.jsx";
 import StateMapLockout   from "./statemap/StateMapLockout.jsx";
 import StateMapTactical  from "./statemap/StateMapTactical.jsx";
+import { StateMapAuxPattern, StateMapAuxColor } from "./statemap/StateMapAuxConfig.jsx";
+import StateMapSunset    from "./statemap/StateMapSunset.jsx";
 import "./StateMap.css";
 
-export default function StateMap({ currentState, uiMode, onGoToState, onInput, level = 0 }) {
+export default function StateMap({
+  currentState, uiMode, onGoToState, onInput, level = 0,
+  rampStyle = "smooth", auxPatternIndex = 0, auxColorIndex = 0,
+  sunsetMinutes = 0,
+}) {
   const isAdvanced         = uiMode === "full";
   const inBlinkyExpanded   = isAdvanced && BLINKY_STATES.has(currentState);
   const inStrobeExpanded   = isAdvanced && STROBE_STATES.has(currentState);
   const inLockoutExpanded  = isAdvanced && LOCKOUT_STATES.has(currentState);
   const inTacticalExpanded = isAdvanced && TACTICAL_STATES.has(currentState);
-  const inRampExpanded     = currentState === "RAMP";
+  const inSunsetExpanded   = currentState === "SUNSET_TIMER";
+  const inRampExpanded     = !inSunsetExpanded && RAMP_EXPANDED_STATES.has(currentState);
+  const inAuxPatternExpanded = isAdvanced && AUX_PATTERN_STATES.has(currentState);
+  const inAuxColorExpanded   = isAdvanced && AUX_COLOR_STATES.has(currentState);
 
   const visibleStates = useMemo(() => getVisibleStates(uiMode), [uiMode]);
 
@@ -32,6 +42,7 @@ export default function StateMap({ currentState, uiMode, onGoToState, onInput, l
   // Edges for the default / simple view (not used when a sub-cluster is expanded)
   const defaultEdges = useMemo(() => {
     if (inBlinkyExpanded || inStrobeExpanded || inLockoutExpanded || inTacticalExpanded || inRampExpanded) return [];
+    if (inAuxPatternExpanded || inAuxColorExpanded || inSunsetExpanded) return [];
     const transitions = getAvailableTransitions(currentState, uiMode);
     const edgeMap = new Map();
     const positions = isAdvanced ? DEFAULT_POSITIONS : SIMPLE_POSITIONS;
@@ -45,7 +56,27 @@ export default function StateMap({ currentState, uiMode, onGoToState, onInput, l
       edgeMap.get(key).inputs.push(t.action);
     }
     return Array.from(edgeMap.values());
-  }, [currentState, uiMode, isAdvanced, inBlinkyExpanded, inStrobeExpanded, inRampExpanded]);
+  }, [currentState, uiMode, isAdvanced, inBlinkyExpanded, inStrobeExpanded, inRampExpanded, inAuxPatternExpanded, inAuxColorExpanded]);
+
+  if (inAuxPatternExpanded) {
+    return (
+      <StateMapAuxPattern
+        auxPatternIndex={auxPatternIndex}
+        onGoToState={onGoToState}
+        onInput={onInput}
+      />
+    );
+  }
+
+  if (inAuxColorExpanded) {
+    return (
+      <StateMapAuxColor
+        auxColorIndex={auxColorIndex}
+        onGoToState={onGoToState}
+        onInput={onInput}
+      />
+    );
+  }
 
   if (inBlinkyExpanded) {
     return (
@@ -93,11 +124,25 @@ export default function StateMap({ currentState, uiMode, onGoToState, onInput, l
     );
   }
 
+  if (inSunsetExpanded) {
+    return (
+      <StateMapSunset
+        level={level}
+        sunsetMinutes={sunsetMinutes}
+        isAdvanced={isAdvanced}
+        reachableFromCurrent={reachableFromCurrent}
+        onGoToState={onGoToState}
+      />
+    );
+  }
+
   if (inRampExpanded) {
     return (
       <StateMapRamp
         isAdvanced={isAdvanced}
+        currentState={currentState}
         level={level}
+        rampStyle={rampStyle}
         reachableFromCurrent={reachableFromCurrent}
         onGoToState={onGoToState}
         uiMode={uiMode}

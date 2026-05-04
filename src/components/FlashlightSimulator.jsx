@@ -1,5 +1,7 @@
+import { useState, useEffect } from "react";
 import "./FlashlightSimulator.css";
 import { CM_PHASE } from "../utils/configMenuEngine.js";
+import { DISCO_CYCLE_HEX } from "../hooks/useStateMachine.js";
 
 // Convert Anduril level (1–150) to a 0–100 percentage for the visual
 function levelToPercent(lvl) {
@@ -31,8 +33,21 @@ export default function FlashlightSimulator({
   const coreOpacity = 0.1 + pct * 0.6;
   const glowOpacity = pct * 0.3;
 
+  // Disco / rainbow animation for aux indicator
+  const isDiscoMode   = auxDisplay?.colorName === "disco";
+  const isRainbowMode = auxDisplay?.colorName === "rainbow";
+  const [animColorIdx, setAnimColorIdx] = useState(0);
+  useEffect(() => {
+    if (!isDiscoMode && !isRainbowMode) return;
+    const ms = isDiscoMode ? 250 : 1000;
+    const id = setInterval(() => setAnimColorIdx((i) => (i + 1) % DISCO_CYCLE_HEX.length), ms);
+    return () => clearInterval(id);
+  }, [isDiscoMode, isRainbowMode]);
+
   // Resolve button indicator color and pattern from auxDisplay
-  const auxColor   = auxDisplay?.color ?? null;   // hex or null
+  const auxColor   = (isDiscoMode || isRainbowMode)
+    ? DISCO_CYCLE_HEX[animColorIdx]
+    : (auxDisplay?.color ?? null);   // hex or null
   const auxPattern = auxDisplay?.pattern ?? null; // "off"|"low"|"high"|"blinking"|null
 
   // Button face: pressed → dark; on → amber; aux pattern off → neutral; else → aux color

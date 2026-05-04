@@ -13,22 +13,25 @@ export const AUX_PATTERNS = ["off", "low", "high", "blinking"];
 
 // Aux LED colors (cycle order matches Anduril firmware)
 export const AUX_COLORS = [
-  "red", "yellow", "green", "cyan", "blue", "purple", "white", "disco", "rainbow", "voltage",
+  "red", "yellow", "green", "cyan", "blue", "magenta", "white", "disco", "rainbow", "voltage",
 ];
 
 // Hex representation used for the button indicator in the simulator
-const AUX_COLOR_HEX = {
+export const AUX_COLOR_HEX = {
   red:     "#ff3333",
   yellow:  "#ffaa00",
   green:   "#33ff33",
   cyan:    "#00dddd",
   blue:    "#3388ff",
-  purple:  "#cc44ff",
+  magenta: "#dd22cc",
   white:   "#ffffff",
-  disco:   "#ff88dd",   // magenta-ish representative
-  rainbow: "#88ddff",   // sky-blue representative
-  voltage: "#9955ee",   // purple = full-battery representative
+  disco:   "#ff44dd",   // representative magenta-pink
+  rainbow: "#88ddff",   // representative sky-blue
+  voltage: "#9955ee",   // representative purple-full-battery
 };
+
+// Colors that cycle during disco / rainbow animations
+export const DISCO_CYCLE_HEX = ["#ff3333", "#ffaa00", "#33ff33", "#00dddd", "#3388ff", "#dd22cc"];
 
 // Anduril brightness: levels 1–150
 const MAX_LEVEL = 150;
@@ -40,12 +43,19 @@ export function levelToPercent(level) {
   return ((level - 1) / (MAX_LEVEL - 1)) * 100;
 }
 
+// States where auxOff settings should be displayed (same as off mode)
+const AUX_OFF_STATES = new Set(["OFF", "AUX_PATTERN_CONFIG", "AUX_COLOR_CONFIG"]);
+
+// States where brightness should be preserved on navigation
+const RAMP_LIKE_STATES = new Set(["RAMP", "SUNSET_TIMER"]);
+
 export function useStateMachine(initialState = "OFF") {
   const [currentState, setCurrentState] = useState(initialState);
   const [uiMode, setUiMode] = useState("simple"); // "simple" | "full"
   const [lastAction, setLastAction] = useState(null);
   const [history, setHistory] = useState([]);
   const [level, setLevel] = useState(0); // 0 = off, 1-150 = on
+  const [rampStyle, setRampStyle] = useState("smooth"); // "smooth" | "stepped"
   const rampTimer = useRef(null);
   const rampDirection = useRef(null); // "up" | "down"
 
@@ -70,28 +80,15 @@ export function useStateMachine(initialState = "OFF") {
     "LIGHTNING", "CANDLE", "BIKE_FLASHER",
   ]);
 
-  // Auto-return from action nodes (FACTORY_RESET, VERSION_CHECK)
+  // Perform factory reset side-effects when entering FACTORY_RESET state.
+  // The state itself (type STATE) does not auto-return — user must press 1C.
   useEffect(() => {
-    const node = nodeMap[currentState];
-    if (node?.type !== NODE_TYPE.ACTION) return;
-
-    // For factory reset: re-enable simple UI
-    if (currentState === "FACTORY_RESET") {
-      setUiMode("simple");
-      setLevel(0);
-    }
-
-    // VERSION_CHECK blinks out the full firmware version — give it enough time
-    // to run at least two full readout cycles before auto-returning.
-    // In a real Anduril (Full UI) it loops until 1C; here we give 30 s.
-    const duration = currentState === "VERSION_CHECK" ? 30_000 : 600;
-
-    const timer = setTimeout(() => {
-      setCurrentState(node.returnsTo ?? "OFF");
-      setLastAction(`${node.name} complete → Off`);
-    }, duration);
-
-    return () => clearTimeout(timer);
+    if (currentState !== "FACTORY_RESET") return;
+    setUiMode("simple");
+    setRampStyle("smooth");
+    setAuxOff({ pattern: 2, color: 9 });
+    setAuxLockout({ pattern: 1, color: 0 });
+    // Level is already 0 since FACTORY_RESET.brightness === 0
   }, [currentState]);
 
   const handleInput = useCallback(
@@ -121,7 +118,13 @@ export function useStateMachine(initialState = "OFF") {
           setUiMode(result.transition.setsUiMode);
         }
 
-        // Aux LED pattern/color cycling — affects the mode we were IN, not the target
+        // Toggle ramp style (smooth ↔ stepped)
+        if (result.transition?.toggleEffect === "rampStyle") {
+          setRampStyle((prev) => (prev === "smooth" ? "stepped" : "smooth"));
+        }
+
+        // Aux LED pattern/color cycling — affects the mode we were IN, not the target.
+        // Also works when already in the AUX_PATTERN_CONFIG / AUX_COLOR_CONFIG states.
         if (result.transition?.auxEffect) {
           const setter = currentState === "LOCKOUT" ? setAuxLockout : setAuxOff;
           if (result.transition.auxEffect === "nextPattern") {
@@ -147,10 +150,20 @@ export function useStateMachine(initialState = "OFF") {
           setLevel(0);
         } else {
           setLevel((prev) => {
-            // If already on and staying in ramp, keep current level
-            if (result.state === "RAMP" && prev > 0) return prev;
+            // Preserve brightness when staying in ramp-like states
+            if (RAMP_LIKE_STATES.has(result.state) && prev > 0) return prev;
             return Math.round((targetInfo.brightness / 100) * MAX_LEVEL) || 1;
           });
+        }
+
+        // Bump sunset timer to ≥3 min when brightness changes while active
+        if (currentState === "SUNSET_TIMER") {
+          const ss = sunsetRef.current;
+          if (ss.remaining > 0 && ss.remaining < 3 &&
+              (result.transition?.rampEffect || result.transition?.brightnessHint)) {
+            ss.remaining = 3;
+            setSunsetMinutes(3);
+          }
         }
       }
       return result;
@@ -181,6 +194,47 @@ export function useStateMachine(initialState = "OFF") {
     rampDirection.current = null;
   }, []);
 
+  // ── Sunset timer ─────────────────────────────────────────────────────────
+  // Simulator scale: 1 "minute" = 1 real second so the demo is observable.
+  const [sunsetMinutes, setSunsetMinutes] = useState(0);
+  const sunsetRef = useRef({ remaining: 0, total: 0, startLevel: 75, intervalId: null });
+
+  const addSunsetMinutes = useCallback((minutes, capturedLevel) => {
+    const ss = sunsetRef.current;
+    const wasInactive = ss.remaining === 0;
+    ss.remaining += minutes;
+    ss.total = Math.max(ss.total, ss.remaining);
+    if (wasInactive) ss.startLevel = capturedLevel;
+    setSunsetMinutes(ss.remaining);
+    if (!ss.intervalId) {
+      ss.intervalId = setInterval(() => {
+        ss.remaining = Math.max(0, ss.remaining - 1);
+        if (ss.remaining <= 0) {
+          clearInterval(ss.intervalId);
+          ss.intervalId = null;
+          setSunsetMinutes(0);
+          setCurrentState("OFF");
+          setLevel(0);
+          setLastAction("Sunset timer complete");
+        } else {
+          const progress = ss.remaining / ss.total;
+          setLevel(Math.max(1, Math.round(ss.startLevel * progress)));
+          setSunsetMinutes(ss.remaining);
+        }
+      }, 1000);
+    }
+  }, []);
+
+  // Clear timer whenever we leave SUNSET_TIMER
+  useEffect(() => {
+    if (currentState === "SUNSET_TIMER") return;
+    const ss = sunsetRef.current;
+    if (ss.intervalId) { clearInterval(ss.intervalId); ss.intervalId = null; }
+    ss.remaining = 0;
+    ss.total = 0;
+    setSunsetMinutes(0);
+  }, [currentState]);
+
   const goToState = useCallback(
     (nodeId) => {
       const info = getStateInfo(nodeId);
@@ -210,9 +264,10 @@ export function useStateMachine(initialState = "OFF") {
   const stateInfo = getStateInfo(currentState);
   const brightness = level === 0 ? 0 : levelToPercent(level);
 
-  // Resolved aux LED display — only active in OFF and LOCKOUT states
+  // Resolved aux LED display — active in off-like states and lockout
   const auxDisplay = useMemo(() => {
-    if (currentState !== "OFF" && currentState !== "LOCKOUT") return null;
+    const isOffLike = AUX_OFF_STATES.has(currentState);
+    if (!isOffLike && currentState !== "LOCKOUT") return null;
     const settings    = currentState === "LOCKOUT" ? auxLockout : auxOff;
     const patternName = AUX_PATTERNS[settings.pattern];
     if (patternName === "off") return { color: null, colorName: null, pattern: "off" };
@@ -232,6 +287,7 @@ export function useStateMachine(initialState = "OFF") {
     lastAction,
     brightness,
     level,
+    rampStyle,
     availableTransitions,
     handleInput,
     startRamp,
@@ -239,5 +295,11 @@ export function useStateMachine(initialState = "OFF") {
     goToState,
     history,
     auxDisplay,
+    // Aux settings exposed for state map expanded views
+    auxPatternIndex: auxOff.pattern,
+    auxColorIndex:   auxOff.color,
+    // Sunset timer
+    sunsetMinutes,
+    addSunsetMinutes,
   };
 }

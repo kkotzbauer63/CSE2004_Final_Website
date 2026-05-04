@@ -24,7 +24,7 @@ export default function StateMapAdvanced({ visibleStates, defaultEdges, currentS
         <span className="statemap__mode">Advanced UI</span>
       </div>
       <div className="statemap__container">
-        <svg className="statemap__svg" viewBox="0 0 650 440" xmlns="http://www.w3.org/2000/svg">
+        <svg className="statemap__svg" viewBox="0 0 650 480" xmlns="http://www.w3.org/2000/svg">
           <ArrowDef />
 
           {/* Simple UI mode-switch pseudo-node — upper-left, connected to OFF */}

@@ -45,8 +45,8 @@ export const DEFAULT_POSITIONS = {
   // Aux config states (accessible from Off via 7C / 7H)
   AUX_PATTERN_CONFIG: { x: 490, y: 80  },
   AUX_COLOR_CONFIG:   { x: 490, y: 195 },
-  // Simple UI config (accessible from Off via 10H in Advanced UI)
-  SIMPLE_UI_CONFIG:   { x: 80,  y: 10  },
+  // Simple UI ramp config (accessible from Off via 10H in Advanced UI)
+  SIMPLE_UI_CONFIG:   { x: 220, y: 85  },
   // Version check / factory reset
   VERSION_CHECK:      { x: 290, y: 385 },
   FACTORY_RESET:      { x: 490, y: 305 },

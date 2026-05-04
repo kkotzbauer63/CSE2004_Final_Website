@@ -64,7 +64,7 @@ export const RAMP_EXTRAS_CONFIG = {
 
 export const SIMPLE_UI_CONFIG = {
   id: "SIMPLE_UI_CONFIG",
-  name: "Simple UI Config",
+  name: "Simple UI Ramp Config",
   ui: UI.FULL,
   type: NODE_TYPE.CONFIG_MENU,
   parent: null,

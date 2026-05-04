@@ -2,21 +2,25 @@
 import { useMemo } from "react";
 import { getAvailableTransitions, getVisibleStates } from "../stateMachine/engine.js";
 import {
-  BLINKY_STATES, STROBE_STATES,
+  BLINKY_STATES, STROBE_STATES, LOCKOUT_STATES, TACTICAL_STATES,
   DEFAULT_POSITIONS, SIMPLE_POSITIONS,
 } from "./statemap/statemapLayouts.js";
-import StateMapSimple   from "./statemap/StateMapSimple.jsx";
-import StateMapAdvanced from "./statemap/StateMapAdvanced.jsx";
-import StateMapRamp     from "./statemap/StateMapRamp.jsx";
-import StateMapBlinky   from "./statemap/StateMapBlinky.jsx";
-import StateMapStrobe   from "./statemap/StateMapStrobe.jsx";
+import StateMapSimple    from "./statemap/StateMapSimple.jsx";
+import StateMapAdvanced  from "./statemap/StateMapAdvanced.jsx";
+import StateMapRamp      from "./statemap/StateMapRamp.jsx";
+import StateMapBlinky    from "./statemap/StateMapBlinky.jsx";
+import StateMapStrobe    from "./statemap/StateMapStrobe.jsx";
+import StateMapLockout   from "./statemap/StateMapLockout.jsx";
+import StateMapTactical  from "./statemap/StateMapTactical.jsx";
 import "./StateMap.css";
 
 export default function StateMap({ currentState, uiMode, onGoToState, onInput, level = 0 }) {
-  const isAdvanced       = uiMode === "full";
-  const inBlinkyExpanded = isAdvanced && BLINKY_STATES.has(currentState);
-  const inStrobeExpanded = isAdvanced && STROBE_STATES.has(currentState);
-  const inRampExpanded   = currentState === "RAMP";
+  const isAdvanced         = uiMode === "full";
+  const inBlinkyExpanded   = isAdvanced && BLINKY_STATES.has(currentState);
+  const inStrobeExpanded   = isAdvanced && STROBE_STATES.has(currentState);
+  const inLockoutExpanded  = isAdvanced && LOCKOUT_STATES.has(currentState);
+  const inTacticalExpanded = isAdvanced && TACTICAL_STATES.has(currentState);
+  const inRampExpanded     = currentState === "RAMP";
 
   const visibleStates = useMemo(() => getVisibleStates(uiMode), [uiMode]);
 
@@ -27,7 +31,7 @@ export default function StateMap({ currentState, uiMode, onGoToState, onInput, l
 
   // Edges for the default / simple view (not used when a sub-cluster is expanded)
   const defaultEdges = useMemo(() => {
-    if (inBlinkyExpanded || inStrobeExpanded || inRampExpanded) return [];
+    if (inBlinkyExpanded || inStrobeExpanded || inLockoutExpanded || inTacticalExpanded || inRampExpanded) return [];
     const transitions = getAvailableTransitions(currentState, uiMode);
     const edgeMap = new Map();
     const positions = isAdvanced ? DEFAULT_POSITIONS : SIMPLE_POSITIONS;
@@ -60,6 +64,28 @@ export default function StateMap({ currentState, uiMode, onGoToState, onInput, l
       <StateMapStrobe
         currentState={currentState}
         visibleStates={visibleStates}
+        reachableFromCurrent={reachableFromCurrent}
+        onGoToState={onGoToState}
+        uiMode={uiMode}
+      />
+    );
+  }
+
+  if (inLockoutExpanded) {
+    return (
+      <StateMapLockout
+        currentState={currentState}
+        reachableFromCurrent={reachableFromCurrent}
+        onGoToState={onGoToState}
+        uiMode={uiMode}
+      />
+    );
+  }
+
+  if (inTacticalExpanded) {
+    return (
+      <StateMapTactical
+        currentState={currentState}
         reachableFromCurrent={reachableFromCurrent}
         onGoToState={onGoToState}
         uiMode={uiMode}

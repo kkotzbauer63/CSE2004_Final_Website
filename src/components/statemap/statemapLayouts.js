@@ -11,6 +11,14 @@ export const STROBE_STATES = new Set([
   "LIGHTNING", "CANDLE", "BIKE_FLASHER",
 ]);
 
+export const LOCKOUT_STATES = new Set([
+  "LOCKOUT", "AUTO_LOCK_CONFIG",
+]);
+
+export const TACTICAL_STATES = new Set([
+  "TACTICAL_MODE", "TACTICAL_SLOT_1", "TACTICAL_SLOT_2", "TACTICAL_SLOT_3", "TACTICAL_CONFIG",
+]);
+
 export const NODE_W = 110;
 export const NODE_H = 36;
 export const CLUSTER_W = 130;
@@ -70,4 +78,22 @@ export const RAMP_EXPANDED_POSITIONS = {
   MOMENTARY_MODE:     { x: 360, y: 115 },
   RAMP_CONFIG:        { x: 360, y: 185 },
   RAMP_EXTRAS_CONFIG: { x: 360, y: 255 },
+};
+
+// Expanded lockout view
+export const LOCKOUT_POSITIONS = {
+  OFF:              { x: 30,  y: 60 },
+  LOCKOUT:          { x: 195, y: 105 },
+  RAMP:             { x: 360, y: 60 },
+  AUTO_LOCK_CONFIG: { x: 195, y: 200 },
+};
+
+// Expanded tactical mode view
+export const TACTICAL_POSITIONS = {
+  OFF:              { x: 30,  y: 90 },
+  TACTICAL_MODE:    { x: 215, y: 110 },
+  TACTICAL_SLOT_1:  { x: 400, y: 35 },
+  TACTICAL_SLOT_2:  { x: 400, y: 115 },
+  TACTICAL_SLOT_3:  { x: 400, y: 195 },
+  TACTICAL_CONFIG:  { x: 30,  y: 180 },
 };

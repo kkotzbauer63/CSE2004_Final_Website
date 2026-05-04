@@ -1,4 +1,10 @@
 import "./FlashlightSimulator.css";
+import { CM_PHASE } from "../utils/configMenuEngine.js";
+
+// Convert Anduril level (1–150) to a 0–100 percentage for the visual
+function levelToPercent(lvl) {
+  return lvl > 0 ? ((lvl - 1) / 149) * 100 : 0;
+}
 
 export default function FlashlightSimulator({
   stateInfo,
@@ -9,9 +15,15 @@ export default function FlashlightSimulator({
   isButtonPressed,
   pendingInput,
   auxDisplay,
+  readoutLevel = null,  // Anduril level (0–150) from useReadout/useConfigMenu; overrides beam
+  configInfo   = null,  // { phase, itemIndex, currentValue, node } from useConfigMenu
 }) {
-  const pct = brightness / 100; // 0–1
-  const isOn = brightness > 0;
+  // When a readout is playing, override the beam brightness with the readout level
+  const activeBrightness = readoutLevel !== null ? levelToPercent(readoutLevel) : brightness;
+  const activeLevel      = readoutLevel !== null ? readoutLevel : level;
+
+  const pct  = activeBrightness / 100; // 0–1
+  const isOn = activeBrightness > 0;
 
   // Beam size scales: 40px at min → 200px at max
   const beamWidth = 40 + pct * 160;
@@ -233,13 +245,13 @@ export default function FlashlightSimulator({
         <div className="simulator__status-row">
           <span className="simulator__label">LEVEL</span>
           <span className="simulator__value simulator__value--mono">
-            {level > 0 ? `${level} / 150` : "Off"}
+            {activeLevel > 0 ? `${activeLevel} / 150` : "Off"}
           </span>
         </div>
         <div className="simulator__status-row">
           <span className="simulator__label">BRIGHT</span>
           <span className="simulator__value simulator__value--mono">
-            {Math.round(brightness)}%
+            {Math.round(activeBrightness)}%
           </span>
         </div>
         {/* Aux LED status — only shown in off/lockout when not ramping */}
@@ -253,13 +265,37 @@ export default function FlashlightSimulator({
             </span>
           </div>
         )}
+        {/* Config menu status — shown while a config menu is active */}
+        {configInfo && (
+          <>
+            <div className="simulator__status-row simulator__status-row--config">
+              <span className="simulator__label">CFG ITEM</span>
+              <span className="simulator__value simulator__value--mono">
+                {configInfo.itemIndex + 1}
+                {configInfo.node?.menuItems
+                  ? ` / ${configInfo.node.menuItems.length} — ${configInfo.node.menuItems[configInfo.itemIndex]?.name ?? ""}`
+                  : ""}
+              </span>
+            </div>
+            <div className="simulator__status-row simulator__status-row--config">
+              <span className="simulator__label">
+                {configInfo.phase === CM_PHASE.PRESENTING ? "ACTION" : "VALUE"}
+              </span>
+              <span className="simulator__value simulator__value--mono">
+                {configInfo.phase === CM_PHASE.PRESENTING
+                  ? "hold = skip · release = enter"
+                  : `${configInfo.currentValue} (click +1 · hold +10 · wait = confirm)`}
+              </span>
+            </div>
+          </>
+        )}
         {/* Live pending input sequence indicator */}
         {pendingInput && (pendingInput.clickCount > 0 || pendingInput.isDown) && (
           <div className="simulator__status-row simulator__status-row--pending">
             <span className="simulator__label">INPUT</span>
             <span className="simulator__value simulator__value--mono simulator__value--pending">
               {pendingInput.holdDetected
-                ? `${pendingInput.clickCount}H`
+                ? `${pendingInput.clickCount + 1}H`
                 : pendingInput.isDown
                   ? `${pendingInput.clickCount + 1}…`
                   : `${pendingInput.clickCount}C…`}

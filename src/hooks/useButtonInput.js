@@ -79,9 +79,18 @@ export function useButtonInput({ handleInput, startRamp, stopRamp }) {
     handler.current.cancel();
   }, []);
 
+  // Exposed so callers can flush stale handler state (e.g. when a config menu
+  // takes over button events after a hold action that triggered the transition).
+  const cancelInput = useCallback(() => {
+    handler.current.cancel();
+    setIsButtonPressed(false);
+    isPressedRef.current = false;
+  }, []);
+
   return {
     buttonHandlers: { onPointerDown, onPointerUp, onPointerLeave },
     isButtonPressed,
     pendingInput,
+    cancelInput,
   };
 }

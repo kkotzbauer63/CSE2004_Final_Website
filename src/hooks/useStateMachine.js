@@ -81,10 +81,15 @@ export function useStateMachine(initialState = "OFF") {
       setLevel(0);
     }
 
+    // VERSION_CHECK blinks out the full firmware version — give it enough time
+    // to run at least two full readout cycles before auto-returning.
+    // In a real Anduril (Full UI) it loops until 1C; here we give 30 s.
+    const duration = currentState === "VERSION_CHECK" ? 30_000 : 600;
+
     const timer = setTimeout(() => {
       setCurrentState(node.returnsTo ?? "OFF");
       setLastAction(`${node.name} complete → Off`);
-    }, 600);
+    }, duration);
 
     return () => clearTimeout(timer);
   }, [currentState]);

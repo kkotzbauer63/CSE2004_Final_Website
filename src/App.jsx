@@ -1,10 +1,33 @@
+import { useMemo, useEffect, useRef, useState } from "react";
 import { useStateMachine } from "./hooks/useStateMachine.js";
 import { useButtonInput } from "./hooks/useButtonInput.js";
+import { useReadout } from "./hooks/useReadout.js";
+import { useConfigMenu } from "./hooks/useConfigMenu.js";
+import {
+  encodeVoltage,
+  encodeTemperature,
+  encodeVersion,
+} from "./utils/readoutEncoder.js";
+import { nodeMap } from "./data/graph.js";
+import { NODE_TYPE } from "./data/constants.js";
 import FlashlightSimulator from "./components/FlashlightSimulator.jsx";
 import TransitionPanel from "./components/TransitionPanel.jsx";
 import StateMap from "./components/StateMap.jsx";
 import ReferenceGuide from "./components/ReferenceGuide.jsx";
 import "./App.css";
+
+// Demo values shown while in the respective readout states.
+const DEMO_VOLTAGE     = 4.16;
+const DEMO_TEMPERATURE = 25;
+const DEMO_VERSION     = "359.2024-01-15";
+
+/** How many configurable items does a config menu node have? */
+function getItemCount(node) {
+  if (!node) return 0;
+  if (node.menuItems)    return node.menuItems.length;
+  if (node.menuVariants) return Object.values(node.menuVariants)[0]?.length ?? 1;
+  return 1;
+}
 
 export default function App() {
   const {
@@ -24,11 +47,108 @@ export default function App() {
     auxDisplay,
   } = useStateMachine("OFF");
 
-  const { buttonHandlers, isButtonPressed, pendingInput } = useButtonInput({
+  // ── Normal button input (used when NOT in a config menu) ────────────────
+  const { buttonHandlers, isButtonPressed, pendingInput, cancelInput } = useButtonInput({
     handleInput,
     startRamp,
     stopRamp,
   });
+
+  // ── Readout flash sequences (battery / temp / version) ──────────────────
+  const readoutSequence = useMemo(() => {
+    if (currentState === "BATTERY_CHECK")     return encodeVoltage(DEMO_VOLTAGE);
+    if (currentState === "TEMPERATURE_CHECK") return encodeTemperature(DEMO_TEMPERATURE);
+    if (currentState === "VERSION_CHECK")     return encodeVersion(DEMO_VERSION);
+    return null;
+  }, [currentState]);
+
+  const loopReadout = currentState === "BATTERY_CHECK" || currentState === "TEMPERATURE_CHECK";
+  const { readoutLevel, isPlaying: readoutPlaying } = useReadout(readoutSequence, {
+    loop: loopReadout,
+  });
+
+  // ── Config menu ──────────────────────────────────────────────────────────
+  const {
+    configLevel,
+    isActive:     configActive,
+    phase:        configPhase,
+    itemIndex:    configItemIndex,
+    currentValue: configCurrentValue,
+    start:        startConfigMenu,
+    onPress:      configPress,
+    onRelease:    configRelease,
+  } = useConfigMenu();
+
+  // Keep a ref to isButtonPressed so the effect can read it without re-running
+  const isButtonPressedRef = useRef(false);
+  isButtonPressedRef.current = isButtonPressed;
+
+  // Start the config menu whenever we enter a CONFIG_MENU state
+  useEffect(() => {
+    const node = nodeMap[currentState];
+    if (node?.type !== NODE_TYPE.CONFIG_MENU) return;
+
+    // The config menu was entered via a hold (e.g. 7H).  The normal button
+    // handler still has isHeld=true and a non-zero clickCount from that
+    // sequence.  Cancel it now so it starts clean when we return.
+    cancelInput();
+
+    const itemCount = getItemCount(node);
+    const returnsTo = node.returnsTo ?? "OFF";
+
+    startConfigMenu(
+      itemCount,
+      (results) => {
+        // Results are available here for any UI that wants to show them.
+        // Return to the state the user was in before entering the config menu.
+        goToState(returnsTo);
+      },
+      isButtonPressedRef.current,   // true when entered via a hold (e.g. 7H)
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentState]);
+
+  // ── Button handler routing ───────────────────────────────────────────────
+  // When a config menu is active, raw press/release events go to useConfigMenu.
+  // Track button visual separately so the flashlight button still animates.
+  const [configBtnPressed, setConfigBtnPressed] = useState(false);
+
+  const configButtonHandlers = useMemo(() => ({
+    onPointerDown: (e) => {
+      e.preventDefault();
+      setConfigBtnPressed(true);
+      configPress();
+    },
+    onPointerUp: (e) => {
+      e.preventDefault();
+      setConfigBtnPressed(false);
+      configRelease();
+    },
+    onPointerLeave: () => {
+      setConfigBtnPressed(false);
+      configRelease();
+    },
+  }), [configPress, configRelease]);
+
+  const activeButtonHandlers = configActive ? configButtonHandlers : buttonHandlers;
+  const activeIsButtonPressed = configActive ? configBtnPressed : isButtonPressed;
+
+  // ── Brightness override priority ─────────────────────────────────────────
+  // Config menu > readout > normal state brightness
+  const overrideLevel =
+    configActive      ? configLevel :
+    readoutPlaying    ? readoutLevel :
+    null;
+
+  // ── Config info passed down for status display ───────────────────────────
+  const configInfo = configActive
+    ? {
+        phase:        configPhase,
+        itemIndex:    configItemIndex,
+        currentValue: configCurrentValue,
+        node:         nodeMap[currentState],
+      }
+    : null;
 
   return (
     <div className="app">
@@ -66,10 +186,12 @@ export default function App() {
             brightness={brightness}
             level={level}
             lastAction={lastAction}
-            buttonHandlers={buttonHandlers}
-            isButtonPressed={isButtonPressed}
-            pendingInput={pendingInput}
+            buttonHandlers={activeButtonHandlers}
+            isButtonPressed={activeIsButtonPressed}
+            pendingInput={configActive ? null : pendingInput}
             auxDisplay={auxDisplay}
+            readoutLevel={overrideLevel}
+            configInfo={configInfo}
           />
           <TransitionPanel
             transitions={availableTransitions}

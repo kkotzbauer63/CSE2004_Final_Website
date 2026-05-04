@@ -159,10 +159,10 @@ export function useStateMachine(initialState = "OFF") {
         // Bump sunset timer to ≥3 min when brightness changes while active
         if (currentState === "SUNSET_TIMER") {
           const ss = sunsetRef.current;
-          if (ss.remaining > 0 && ss.remaining < 3 &&
+          if (ss.remaining > 0 && ss.remaining < 180 &&
               (result.transition?.rampEffect || result.transition?.brightnessHint)) {
-            ss.remaining = 3;
-            setSunsetMinutes(3);
+            ss.remaining = 180;
+            setSunsetSeconds(180);
           }
         }
       }
@@ -195,33 +195,42 @@ export function useStateMachine(initialState = "OFF") {
   }, []);
 
   // ── Sunset timer ─────────────────────────────────────────────────────────
-  // Simulator scale: 1 "minute" = 1 real second so the demo is observable.
-  const [sunsetMinutes, setSunsetMinutes] = useState(0);
-  const sunsetRef = useRef({ remaining: 0, total: 0, startLevel: 75, intervalId: null });
+  // Internally tracked in seconds (floats). 5 min = 300 s.
+  // Tick interval: 500 ms → -0.5 s per tick (normal) or -5 s per tick (10× speed).
+  const [sunsetSeconds, setSunsetSeconds] = useState(0);
+  const sunsetRef      = useRef({ remaining: 0, total: 0, startLevel: 75, intervalId: null });
+  const sunsetSpeedRef = useRef(1); // 1 = real-time, 10 = 10× fast
+  const [sunsetSpeedMultiplier, setSunsetSpeedMultiplier] = useState(1);
+
+  const toggleSunsetSpeed = useCallback(() => {
+    const next = sunsetSpeedRef.current === 1 ? 10 : 1;
+    sunsetSpeedRef.current = next;
+    setSunsetSpeedMultiplier(next);
+  }, []);
 
   const addSunsetMinutes = useCallback((minutes, capturedLevel) => {
     const ss = sunsetRef.current;
     const wasInactive = ss.remaining === 0;
-    ss.remaining += minutes;
+    ss.remaining += minutes * 60;               // convert minutes → seconds
     ss.total = Math.max(ss.total, ss.remaining);
     if (wasInactive) ss.startLevel = capturedLevel;
-    setSunsetMinutes(ss.remaining);
+    setSunsetSeconds(Math.ceil(ss.remaining));
     if (!ss.intervalId) {
       ss.intervalId = setInterval(() => {
-        ss.remaining = Math.max(0, ss.remaining - 1);
+        ss.remaining = Math.max(0, ss.remaining - 0.5 * sunsetSpeedRef.current);
         if (ss.remaining <= 0) {
           clearInterval(ss.intervalId);
           ss.intervalId = null;
-          setSunsetMinutes(0);
+          setSunsetSeconds(0);
           setCurrentState("OFF");
           setLevel(0);
           setLastAction("Sunset timer complete");
         } else {
           const progress = ss.remaining / ss.total;
           setLevel(Math.max(1, Math.round(ss.startLevel * progress)));
-          setSunsetMinutes(ss.remaining);
+          setSunsetSeconds(Math.ceil(ss.remaining));
         }
-      }, 1000);
+      }, 500);
     }
   }, []);
 
@@ -232,7 +241,7 @@ export function useStateMachine(initialState = "OFF") {
     if (ss.intervalId) { clearInterval(ss.intervalId); ss.intervalId = null; }
     ss.remaining = 0;
     ss.total = 0;
-    setSunsetMinutes(0);
+    setSunsetSeconds(0);
   }, [currentState]);
 
   const goToState = useCallback(
@@ -299,7 +308,9 @@ export function useStateMachine(initialState = "OFF") {
     auxPatternIndex: auxOff.pattern,
     auxColorIndex:   auxOff.color,
     // Sunset timer
-    sunsetMinutes,
+    sunsetSeconds,
     addSunsetMinutes,
+    sunsetSpeedMultiplier,
+    toggleSunsetSpeed,
   };
 }

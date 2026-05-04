@@ -20,7 +20,7 @@ import "./StateMap.css";
 export default function StateMap({
   currentState, uiMode, onGoToState, onInput, level = 0,
   rampStyle = "smooth", auxPatternIndex = 0, auxColorIndex = 0,
-  sunsetMinutes = 0,
+  sunsetSeconds = 0, sunsetSpeedMultiplier = 1, toggleSunsetSpeed = () => {},
 }) {
   const isAdvanced         = uiMode === "full";
   const inBlinkyExpanded   = isAdvanced && BLINKY_STATES.has(currentState);
@@ -128,9 +128,10 @@ export default function StateMap({
     return (
       <StateMapSunset
         level={level}
-        sunsetMinutes={sunsetMinutes}
+        sunsetSeconds={sunsetSeconds}
+        sunsetSpeedMultiplier={sunsetSpeedMultiplier}
+        toggleSunsetSpeed={toggleSunsetSpeed}
         isAdvanced={isAdvanced}
-        reachableFromCurrent={reachableFromCurrent}
         onGoToState={onGoToState}
       />
     );

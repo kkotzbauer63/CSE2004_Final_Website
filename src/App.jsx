@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useRef, useState } from "react";
+import { useMemo, useEffect, useRef, useState, useCallback } from "react";
 import { useStateMachine } from "./hooks/useStateMachine.js";
 import { useButtonInput } from "./hooks/useButtonInput.js";
 import { useReadout } from "./hooks/useReadout.js";
@@ -49,8 +49,10 @@ export default function App() {
     auxDisplay,
     auxPatternIndex,
     auxColorIndex,
-    sunsetMinutes,
+    sunsetSeconds,
     addSunsetMinutes,
+    sunsetSpeedMultiplier,
+    toggleSunsetSpeed,
   } = useStateMachine("OFF");
 
   // ── Normal button input (used when NOT in a config menu) ────────────────
@@ -120,22 +122,33 @@ export default function App() {
   }, [currentState]);
 
   // ── Sunset timer hold-counting ──────────────────────────────────────────
-  // While in SUNSET_TIMER with the button held, add 5 min per second and blink.
+  // Immediate first blink+add when entering SUNSET_TIMER while button is held.
   const [sunsetBlink, setSunsetBlink] = useState(false);
   const sunsetBlinkTimeoutRef = useRef(null);
+
+  const doSunsetBlink = useCallback(() => {
+    addSunsetMinutes(5, levelRef.current);
+    setSunsetBlink(true);
+    sunsetBlinkTimeoutRef.current = setTimeout(() => setSunsetBlink(false), 120);
+  }, [addSunsetMinutes]);
+
+  // Fire immediately on entry (isButtonPressedRef used to avoid re-running on press changes)
+  useEffect(() => {
+    if (currentState !== "SUNSET_TIMER" || !isButtonPressedRef.current) return;
+    doSunsetBlink();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentState]);
+
+  // Then continue adding 5 min per second while still held
   useEffect(() => {
     if (currentState !== "SUNSET_TIMER" || !isButtonPressed) return;
-    const id = setInterval(() => {
-      addSunsetMinutes(5, levelRef.current);
-      setSunsetBlink(true);
-      sunsetBlinkTimeoutRef.current = setTimeout(() => setSunsetBlink(false), 120);
-    }, 1000);
+    const id = setInterval(doSunsetBlink, 1000);
     return () => {
       clearInterval(id);
       clearTimeout(sunsetBlinkTimeoutRef.current);
       setSunsetBlink(false);
     };
-  }, [currentState, isButtonPressed, addSunsetMinutes]);
+  }, [currentState, isButtonPressed, doSunsetBlink]);
 
   // ── Aux color hold-cycling ───────────────────────────────────────────────
   // While in AUX_COLOR_CONFIG with the button still held, advance one color
@@ -256,7 +269,9 @@ export default function App() {
             rampStyle={rampStyle}
             auxPatternIndex={auxPatternIndex}
             auxColorIndex={auxColorIndex}
-            sunsetMinutes={sunsetMinutes}
+            sunsetSeconds={sunsetSeconds}
+            sunsetSpeedMultiplier={sunsetSpeedMultiplier}
+            toggleSunsetSpeed={toggleSunsetSpeed}
           />
 
           {/* Input notation reference */}

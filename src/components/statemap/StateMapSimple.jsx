@@ -4,7 +4,7 @@ import { getStateInfo } from "../../stateMachine/engine.js";
 import { SIMPLE_POSITIONS } from "./statemapLayouts.js";
 import { ArrowDef, EdgeLine, StateNode } from "./StateMapPrimitives.jsx";
 
-export default function StateMapSimple({ visibleStates, defaultEdges, currentState, reachableFromCurrent, onGoToState }) {
+export default function StateMapSimple({ visibleStates, defaultEdges, currentState, reachableFromCurrent, onGoToState, onInput }) {
   const simpleVisible = visibleStates.filter((s) => SIMPLE_POSITIONS[s]);
 
   return (
@@ -14,8 +14,40 @@ export default function StateMapSimple({ visibleStates, defaultEdges, currentSta
         <span className="statemap__mode">Simple UI</span>
       </div>
       <div className="statemap__container">
-        <svg className="statemap__svg" viewBox="0 0 560 200" xmlns="http://www.w3.org/2000/svg">
+        <svg className="statemap__svg" viewBox="0 0 560 210" xmlns="http://www.w3.org/2000/svg">
           <ArrowDef />
+
+          {/* Advanced UI mode-switch pseudo-node — upper-left, connected to OFF */}
+          {(() => {
+            const atOff = currentState === "OFF";
+            const nx = 40, ny = 22, nw = 120, nh = 36;
+            // edge: OFF left-center → node right-center
+            const ex1 = 220, ey1 = 48, ex2 = nx + nw, ey2 = ny + nh / 2;
+            const mx = (ex1 + ex2) / 2, my = (ey1 + ey2) / 2;
+            return (
+              <g>
+                <line x1={ex1} y1={ey1} x2={ex2} y2={ey2}
+                  stroke="#D4A84B" strokeWidth="1.5"
+                  strokeOpacity={atOff ? 0.5 : 0.12}
+                  markerEnd="url(#arrowhead)"
+                />
+                <text x={mx} y={my - 5} textAnchor="middle" className="statemap__edge-label"
+                  opacity={atOff ? 1 : 0.35}>10H</text>
+                <g onClick={() => onInput("10H")} style={{ cursor: "pointer" }}
+                  opacity={atOff ? 1 : 0.3}>
+                  <rect x={nx} y={ny} width={nw} height={nh} rx="2"
+                    fill="#1c1c1e" stroke="#777" strokeWidth="1" strokeDasharray="4 3" />
+                  <rect x={nx} y={ny} width="3" height={nh} rx="1" fill="#888" />
+                  <text x={nx + nw / 2 + 2} y={ny + nh / 2 + 1}
+                    textAnchor="middle" dominantBaseline="middle"
+                    className="statemap__node-label" fill={atOff ? "#aaa" : "#444"}>
+                    Advanced UI
+                  </text>
+                </g>
+              </g>
+            );
+          })()}
+
           {defaultEdges.map((e) => {
             const fromPos = SIMPLE_POSITIONS[e.from];
             const toPos   = SIMPLE_POSITIONS[e.to];

@@ -2,8 +2,7 @@
 import { useMemo } from "react";
 import { getAvailableTransitions, getVisibleStates } from "../stateMachine/engine.js";
 import {
-  BLINKY_STATES, BLINKY_CLUSTER,
-  STROBE_STATES, STROBE_CLUSTER,
+  BLINKY_STATES, STROBE_STATES,
   DEFAULT_POSITIONS, SIMPLE_POSITIONS,
 } from "./statemap/statemapLayouts.js";
 import StateMapSimple   from "./statemap/StateMapSimple.jsx";
@@ -13,11 +12,11 @@ import StateMapBlinky   from "./statemap/StateMapBlinky.jsx";
 import StateMapStrobe   from "./statemap/StateMapStrobe.jsx";
 import "./StateMap.css";
 
-export default function StateMap({ currentState, uiMode, onGoToState, level = 0 }) {
+export default function StateMap({ currentState, uiMode, onGoToState, onInput, level = 0 }) {
   const isAdvanced       = uiMode === "full";
   const inBlinkyExpanded = isAdvanced && BLINKY_STATES.has(currentState);
   const inStrobeExpanded = isAdvanced && STROBE_STATES.has(currentState);
-  const inRampExpanded   = currentState === "ramp";
+  const inRampExpanded   = currentState === "RAMP";
 
   const visibleStates = useMemo(() => getVisibleStates(uiMode), [uiMode]);
 
@@ -34,12 +33,12 @@ export default function StateMap({ currentState, uiMode, onGoToState, level = 0 
     const positions = isAdvanced ? DEFAULT_POSITIONS : SIMPLE_POSITIONS;
     for (const t of transitions) {
       let target = t.target;
-      if (isAdvanced && BLINKY_STATES.has(target)) target = BLINKY_CLUSTER;
-      if (isAdvanced && STROBE_STATES.has(target)) target = STROBE_CLUSTER;
+      if (isAdvanced && BLINKY_STATES.has(target)) target = "BLINKY_GROUP";
+      if (isAdvanced && STROBE_STATES.has(target)) target = "STROBE_GROUP";
       if (target === currentState || !positions[target]) continue;
       const key = `${currentState}->${target}`;
       if (!edgeMap.has(key)) edgeMap.set(key, { from: currentState, to: target, inputs: [] });
-      edgeMap.get(key).inputs.push(t.input);
+      edgeMap.get(key).inputs.push(t.action);
     }
     return Array.from(edgeMap.values());
   }, [currentState, uiMode, isAdvanced, inBlinkyExpanded, inStrobeExpanded, inRampExpanded]);
@@ -88,6 +87,7 @@ export default function StateMap({ currentState, uiMode, onGoToState, level = 0 
         currentState={currentState}
         reachableFromCurrent={reachableFromCurrent}
         onGoToState={onGoToState}
+        onInput={onInput}
       />
     );
   }
@@ -99,6 +99,7 @@ export default function StateMap({ currentState, uiMode, onGoToState, level = 0 
       currentState={currentState}
       reachableFromCurrent={reachableFromCurrent}
       onGoToState={onGoToState}
+      onInput={onInput}
     />
   );
 }

@@ -22,7 +22,7 @@ export default function App() {
     goToState,
     history,
     auxDisplay,
-  } = useStateMachine("off");
+  } = useStateMachine("OFF");
 
   const { buttonHandlers, isButtonPressed, pendingInput } = useButtonInput({
     handleInput,
@@ -87,6 +87,7 @@ export default function App() {
             currentState={currentState}
             uiMode={uiMode}
             onGoToState={goToState}
+            onInput={handleInput}
             level={level}
           />
 

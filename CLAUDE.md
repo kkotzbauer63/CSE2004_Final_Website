@@ -66,125 +66,83 @@ Step-by-step interactive walkthroughs for common tasks:
 
 ### Key principle: separate logic from rendering
 
-The state machine logic lives in plain JavaScript modules. React components only handle rendering and user interaction. This keeps the codebase modular, testable, and understandable.
+The state machine logic lives in plain JavaScript modules. React components only handle rendering and user interaction.
 
 ```
 src/
+├── data/
+│   ├── constants.js        # UI, NODE_TYPE, TRANSITION_KIND, CONDITION enums
+│   ├── graph.js            # Assembles nodeMap; exports helpers and stateGroups
+│   ├── nodes/
+│   │   ├── off.js          # OFF node
+│   │   ├── ramp.js         # RAMP node
+│   │   ├── lockout.js      # LOCKOUT node
+│   │   ├── blinkyGroup.js  # BLINKY_GROUP container + children
+│   │   ├── strobeGroup.js  # STROBE_GROUP container + children
+│   │   ├── tacticalMode.js # TACTICAL_MODE container + children
+│   │   ├── momentaryMode.js
+│   │   ├── configMenus.js  # All 9 config menu nodes
+│   │   └── actions.js      # VERSION_CHECK, FACTORY_RESET
+│   └── ref/                # Reference guide entry files (one per task)
+├── utils/
+│   └── filterGraph.js      # isVisible(), filterTransitions() pure helpers
 ├── stateMachine/
-│   ├── states.js          # State definitions and transition data
-│   ├── engine.js          # State machine engine (pure functions)
-│   └── parser.js          # Parses GitHub manual table into state data
+│   ├── states.js           # Re-export shim → data/graph.js
+│   └── engine.js           # Pure functions: processInput, getAvailableTransitions
 ├── services/
-│   └── githubService.js   # GitHub API calls (plain JS, no React)
+│   └── githubService.js    # GitHub API calls
 ├── components/
 │   ├── FlashlightSimulator.jsx
-│   ├── StateMap.jsx
+│   ├── StateMap.jsx        # Orchestrator — picks sub-view based on currentState
 │   ├── TransitionPanel.jsx
 │   ├── ReferenceGuide.jsx
-│   ├── VersionSelector.jsx
-│   └── TutorialWalkthrough.jsx
+│   └── statemap/           # StateMapSimple, Advanced, Blinky, Strobe, Ramp, Primitives
 ├── hooks/
-│   └── useStateMachine.js  # Custom hook connecting engine to React state
+│   └── useStateMachine.js  # Thin bridge between engine and React state
 └── App.jsx
 ```
 
-### State machine (plain JavaScript — no React)
+### Node structure
 
-The state machine is the heart of the project. It should be implemented as a data structure and pure functions, not as React components.
-
-**State definition structure:**
+Every node has a consistent shape. State IDs are `UPPER_SNAKE_CASE`.
 
 ```javascript
-// states.js — this is just data, no React
-const states = {
-  off: {
-    name: "Off",
-    transitions: [
-      { input: "1C", target: "ramp", action: "Turn on (memorized level)", ui: "any" },
-      { input: "1H", target: "ramp", action: "Turn on at floor (moon)", ui: "any" },
-      { input: "2C", target: "ramp", action: "Turn on at ceiling", ui: "any" },
-      { input: "2H", target: "ramp", action: "Momentary turbo", ui: "full" },
-      { input: "2H", target: "ramp", action: "Momentary ceiling", ui: "simple" },
-      { input: "3C", target: "battcheck", action: "Battery check", ui: "any" },
-      { input: "3H", target: "strobe", action: "Strobe mode (last used)", ui: "full" },
-      { input: "4C", target: "lockout", action: "Lockout mode", ui: "any" },
-      { input: "5C", target: "momentary", action: "Momentary mode", ui: "full" },
-      { input: "6C", target: "tactical", action: "Tactical mode", ui: "full" },
-      { input: "7C", target: "off", action: "Aux LEDs: next pattern", ui: "full" },
-      { input: "7H", target: "off", action: "Aux LEDs: next color", ui: "full" },
-      { input: "10C", target: "off", action: "Enable Simple UI", ui: "full" },
-      { input: "10H", target: "off", action: "Disable Simple UI", ui: "simple" },
-      { input: "13H", target: "off", action: "Factory reset", ui: "any" },
-      { input: "15+C", target: "off", action: "Version check", ui: "any" },
-    ]
-  },
-  ramp: {
-    name: "Ramp",
-    // ... transitions from ramp state
-  },
-  lockout: {
-    name: "Lockout",
-    // ... transitions from lockout state
-  },
-  // ... etc
+// Example — src/data/nodes/off.js
+export const OFF = {
+  id: "OFF",
+  name: "Off",
+  ui: UI.ANY,
+  type: NODE_TYPE.STATE,   // state | container | config_menu | action
+  parent: null,
+  group: "core",           // for state map color coding
+  brightness: 0,           // simulator display (0–100)
+  transitions: [
+    // action = button notation ("1C"), description = human text
+    { action: "1C", target: "RAMP",          ui: UI.ANY,  description: "On (memorized level)" },
+    { action: "3H", target: "STROBE_GROUP",  ui: UI.FULL, description: "Strobe / mood modes" },
+    { action: "4C", target: "LOCKOUT",       ui: UI.ANY,  description: "Lockout mode" },
+    // ... etc
+  ],
 };
 ```
 
-**State machine engine:**
+**Container nodes** (BLINKY_GROUP, STROBE_GROUP, TACTICAL_MODE) have `childIds`, `entryPoint`, and `sharedTransitions` (inherited by all children). The engine resolves a container to its concrete entry child on navigation. `STROBE_GROUP` uses `entryPoint: "last_used"` to re-enter the last-used strobe mode.
 
-```javascript
-// engine.js — pure functions, no React
-export function getAvailableTransitions(state, uiMode) {
-  const stateData = states[state];
-  if (!stateData) return [];
+**Action nodes** (VERSION_CHECK, FACTORY_RESET) have `type: NODE_TYPE.ACTION` and `returnsTo: "OFF"`. `useStateMachine` auto-returns via a 600ms `useEffect` timeout.
 
-  return stateData.transitions.filter(t =>
-    t.ui === "any" || t.ui === uiMode
-  );
-}
+### Engine (`src/stateMachine/engine.js`)
 
-export function processInput(currentState, input, uiMode) {
-  const transitions = getAvailableTransitions(currentState, uiMode);
-  const match = transitions.find(t => t.input === input);
-  if (!match) return { state: currentState, action: null };
+Pure functions — no React.
 
-  return {
-    state: match.target,
-    action: match.action
-  };
-}
-```
+- `getAvailableTransitions(nodeId, uiMode)` — calls `getEffectiveTransitions` (merges parent `sharedTransitions` + node's own), then filters by `ui`.
+- `processInput(nodeId, input, uiMode, lastUsedStrobeId)` — finds matching transition by `t.action`, resolves containers via `resolveContainerEntry`, returns `{ state, action, transition }`.
+- `getStateInfo(nodeId)` — returns node metadata for display.
 
-**Connecting to React via a custom hook:**
+### Hook (`src/hooks/useStateMachine.js`)
 
-```javascript
-// useStateMachine.js — thin bridge between engine and React
-import { useState } from "react";
-import { processInput, getAvailableTransitions } from "../stateMachine/engine";
+Bridges the engine to React. Manages `currentState`, `uiMode`, `level`, `history`, `auxDisplay`, and `lastUsedStrobe` ref. Calls `processInput` on input, handles ramp timers, and applies simulator extensions from transitions (`rampEffect`, `brightnessHint`, `auxEffect`, `setsUiMode`).
 
-export function useStateMachine(initialState = "off") {
-  const [currentState, setCurrentState] = useState(initialState);
-  const [uiMode, setUiMode] = useState("simple"); // "simple" or "full"
-  const [lastAction, setLastAction] = useState(null);
-
-  function handleInput(input) {
-    const result = processInput(currentState, input, uiMode);
-    if (result.action) {
-      setCurrentState(result.state);
-      setLastAction(result.action);
-    }
-  }
-
-  const availableTransitions = getAvailableTransitions(currentState, uiMode);
-
-  return { currentState, uiMode, setUiMode, lastAction, availableTransitions, handleInput };
-}
-```
-
-This separation means:
-- `states.js` and `engine.js` can be tested without React, without a browser, without any UI
-- The React components are thin — they call `handleInput("1C")` and render whatever comes back
-- If you later want to populate states from the GitHub API, you only change `states.js` or add a loader — the components don't need to know
+React components call `handleInput("1C")` and render whatever comes back — they don't contain state machine logic.
 
 ### Button input handling
 

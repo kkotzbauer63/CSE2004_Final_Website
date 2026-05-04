@@ -7,7 +7,7 @@ import { ArrowDef, EdgeLine, StateNode } from "./StateMapPrimitives.jsx";
 
 export default function StateMapStrobe({ currentState, visibleStates, reachableFromCurrent, onGoToState, uiMode }) {
   const strobeVisible = Object.keys(STROBE_POSITIONS).filter(
-    (s) => s === "off" || visibleStates.includes(s)
+    (s) => s === "OFF" || visibleStates.includes(s)
   );
 
   const strobeEdges = useMemo(() => {
@@ -17,7 +17,7 @@ export default function StateMapStrobe({ currentState, visibleStates, reachableF
       if (t.target === currentState || !STROBE_POSITIONS[t.target]) continue;
       const key = `${currentState}->${t.target}`;
       if (!edgeMap.has(key)) edgeMap.set(key, { from: currentState, to: t.target, inputs: [] });
-      edgeMap.get(key).inputs.push(t.input);
+      edgeMap.get(key).inputs.push(t.action);
     }
     return Array.from(edgeMap.values());
   }, [currentState, uiMode]);

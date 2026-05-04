@@ -7,7 +7,7 @@ import { ArrowDef, EdgeLine, StateNode } from "./StateMapPrimitives.jsx";
 
 export default function StateMapBlinky({ currentState, visibleStates, reachableFromCurrent, onGoToState, uiMode }) {
   const blinkyVisible = Object.keys(BLINKY_POSITIONS).filter(
-    (s) => visibleStates.includes(s) || s === "off"
+    (s) => visibleStates.includes(s) || s === "OFF"
   );
 
   const blinkyEdges = useMemo(() => {
@@ -17,7 +17,7 @@ export default function StateMapBlinky({ currentState, visibleStates, reachableF
       if (t.target === currentState || !BLINKY_POSITIONS[t.target]) continue;
       const key = `${currentState}->${t.target}`;
       if (!edgeMap.has(key)) edgeMap.set(key, { from: currentState, to: t.target, inputs: [] });
-      edgeMap.get(key).inputs.push(t.input);
+      edgeMap.get(key).inputs.push(t.action);
     }
     return Array.from(edgeMap.values());
   }, [currentState, uiMode]);

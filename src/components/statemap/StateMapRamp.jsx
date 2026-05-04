@@ -18,17 +18,17 @@ export default function StateMapRamp({ isAdvanced, level, reachableFromCurrent, 
   const floorLineY = RAMP_Y + 240;
   const levelY     = level > 0 ? rampLevelY(level) : null;
 
-  const rampTransitions = getAvailableTransitions("ramp", uiMode);
+  const rampTransitions = getAvailableTransitions("RAMP", uiMode);
   const rampEdgeMap = new Map();
   for (const t of rampTransitions) {
-    if (t.target === "ramp" || !RAMP_EXPANDED_POSITIONS[t.target]) continue;
+    if (t.target === "RAMP" || t.target === "_self" || !RAMP_EXPANDED_POSITIONS[t.target]) continue;
     if (!rampEdgeMap.has(t.target)) rampEdgeMap.set(t.target, { target: t.target, inputs: [] });
-    rampEdgeMap.get(t.target).inputs.push(t.input);
+    rampEdgeMap.get(t.target).inputs.push(t.action);
   }
   const rampEdges = Array.from(rampEdgeMap.values());
 
-  const leftNodeIds  = ["off", "lockout"];
-  const rightNodeIds = isAdvanced ? ["momentary", "config_ramp", "config_rampextras"] : [];
+  const leftNodeIds  = ["OFF", "LOCKOUT"];
+  const rightNodeIds = isAdvanced ? ["MOMENTARY_MODE", "RAMP_CONFIG", "RAMP_EXTRAS_CONFIG"] : [];
 
   return (
     <div className="statemap">

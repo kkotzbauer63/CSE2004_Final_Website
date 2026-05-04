@@ -3,20 +3,19 @@ import { stateGroups } from "../../stateMachine/states.js";
 import { getStateInfo } from "../../stateMachine/engine.js";
 import {
   DEFAULT_POSITIONS,
-  BLINKY_CLUSTER, BLINKY_STATES,
-  STROBE_CLUSTER, STROBE_STATES,
+  BLINKY_STATES, STROBE_STATES,
   CLUSTER_W, CLUSTER_H,
 } from "./statemapLayouts.js";
 import { ArrowDef, EdgeLine, StateNode } from "./StateMapPrimitives.jsx";
 
-export default function StateMapAdvanced({ visibleStates, defaultEdges, currentState, reachableFromCurrent, onGoToState }) {
+export default function StateMapAdvanced({ visibleStates, defaultEdges, currentState, reachableFromCurrent, onGoToState, onInput }) {
   const defaultVisible = visibleStates.filter(
-    (s) => !BLINKY_STATES.has(s) && !STROBE_STATES.has(s)
+    (s) => !BLINKY_STATES.has(s) && !STROBE_STATES.has(s) && s !== "STROBE_GROUP"
   );
   const showBlinkyCluster  = visibleStates.some((s) => BLINKY_STATES.has(s));
   const blinkyReachable    = [...BLINKY_STATES].some((s) => reachableFromCurrent.has(s));
-  const showStrobeCluster  = visibleStates.some((s) => STROBE_STATES.has(s));
-  const strobeReachable    = [...STROBE_STATES].some((s) => reachableFromCurrent.has(s));
+  const showStrobeCluster  = visibleStates.some((s) => STROBE_STATES.has(s)) || visibleStates.includes("STROBE_GROUP");
+  const strobeReachable    = reachableFromCurrent.has("STROBE_GROUP") || [...STROBE_STATES].some((s) => reachableFromCurrent.has(s));
 
   return (
     <div className="statemap">
@@ -27,6 +26,37 @@ export default function StateMapAdvanced({ visibleStates, defaultEdges, currentS
       <div className="statemap__container">
         <svg className="statemap__svg" viewBox="0 0 650 440" xmlns="http://www.w3.org/2000/svg">
           <ArrowDef />
+
+          {/* Simple UI mode-switch pseudo-node — upper-left, connected to OFF */}
+          {(() => {
+            const atOff = currentState === "OFF";
+            const nx = 100, ny = 10, nw = 120, nh = 36;
+            // edge: OFF left-center → node right-center
+            const ex1 = 280, ey1 = 48, ex2 = nx + nw, ey2 = ny + nh / 2;
+            const mx = (ex1 + ex2) / 2, my = (ey1 + ey2) / 2;
+            return (
+              <g>
+                <line x1={ex1} y1={ey1} x2={ex2} y2={ey2}
+                  stroke="#D4A84B" strokeWidth="1.5"
+                  strokeOpacity={atOff ? 0.5 : 0.12}
+                  markerEnd="url(#arrowhead)"
+                />
+                <text x={mx} y={my - 5} textAnchor="middle" className="statemap__edge-label"
+                  opacity={atOff ? 1 : 0.35}>10H</text>
+                <g onClick={() => onInput("10H")} style={{ cursor: "pointer" }}
+                  opacity={atOff ? 1 : 0.3}>
+                  <rect x={nx} y={ny} width={nw} height={nh} rx="2"
+                    fill="#1c1c1e" stroke="#777" strokeWidth="1" strokeDasharray="4 3" />
+                  <rect x={nx} y={ny} width="3" height={nh} rx="1" fill="#888" />
+                  <text x={nx + nw / 2 + 2} y={ny + nh / 2 + 1}
+                    textAnchor="middle" dominantBaseline="middle"
+                    className="statemap__node-label" fill={atOff ? "#aaa" : "#444"}>
+                    Simple UI
+                  </text>
+                </g>
+              </g>
+            );
+          })()}
 
           {defaultEdges.map((e) => {
             const fromPos = DEFAULT_POSITIONS[e.from];
@@ -43,11 +73,11 @@ export default function StateMapAdvanced({ visibleStates, defaultEdges, currentS
 
           {showBlinkyCluster && (
             <StateNode
-              pos={DEFAULT_POSITIONS[BLINKY_CLUSTER]}
+              pos={DEFAULT_POSITIONS["BLINKY_GROUP"]}
               info={{ group: "blinky", name: "Blinky / Utility" }}
               isCurrent={false}
               isReachable={blinkyReachable}
-              onClick={() => onGoToState("battcheck")}
+              onClick={() => onGoToState("BATTERY_CHECK")}
               w={CLUSTER_W} h={CLUSTER_H}
               label="Blinky / Utility"
             />
@@ -55,11 +85,11 @@ export default function StateMapAdvanced({ visibleStates, defaultEdges, currentS
 
           {showStrobeCluster && (
             <StateNode
-              pos={DEFAULT_POSITIONS[STROBE_CLUSTER]}
+              pos={DEFAULT_POSITIONS["STROBE_GROUP"]}
               info={{ group: "strobe", name: "Strobe Modes" }}
               isCurrent={false}
               isReachable={strobeReachable}
-              onClick={() => onGoToState("strobe_party")}
+              onClick={() => onGoToState("PARTY_STROBE")}
               w={CLUSTER_W} h={CLUSTER_H}
               label="Strobe Modes"
             />

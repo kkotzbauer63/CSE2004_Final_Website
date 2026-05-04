@@ -1,72 +1,87 @@
 // engine.js — State machine engine (pure functions, no React)
-import states from "./states.js";
+// Uses the new data layer from src/data/graph.js
+import { nodeMap, getEffectiveTransitions, resolveContainerEntry } from "../data/graph.js";
+import { NODE_TYPE } from "../data/constants.js";
 
 /**
- * Get all transitions available from a given state in a given UI mode.
+ * Get all transitions visible from a given node in a given UI mode.
+ * Does not filter by conditions (conditions are display-only; engine assumes default hardware).
  */
-export function getAvailableTransitions(state, uiMode) {
-  const stateData = states[state];
-  if (!stateData) return [];
-
-  return stateData.transitions.filter(
+export function getAvailableTransitions(nodeId, uiMode) {
+  const transitions = getEffectiveTransitions(nodeId);
+  return transitions.filter(
     (t) => t.ui === "any" || t.ui === uiMode
   );
 }
 
 /**
- * Process an input in the current state and UI mode.
- * Returns the new state and the action description, or null if no match.
+ * Process a button input in the current node and UI mode.
+ * Returns { state, action, transition } where:
+ *   state  — new node ID to navigate to
+ *   action — human-readable description of what happened (for display)
+ *   transition — the matched transition object (may include simulator extensions)
+ *
+ * Returns { state: currentState, action: null, transition: null } if no match.
  */
-export function processInput(currentState, input, uiMode) {
-  const transitions = getAvailableTransitions(currentState, uiMode);
-  const match = transitions.find((t) => t.input === input);
+export function processInput(currentNodeId, input, uiMode, lastUsedStrobeId = null) {
+  const transitions = getAvailableTransitions(currentNodeId, uiMode);
+  const match = transitions.find((t) => t.action === input);
 
   if (!match) {
-    return { state: currentState, action: null, transition: null };
+    return { state: currentNodeId, action: null, transition: null };
+  }
+
+  // Determine the concrete target node
+  let targetId = match.target === "_self" ? currentNodeId : match.target;
+
+  // If target is a container, resolve it to its concrete entry-point child
+  if (nodeMap[targetId]?.type === NODE_TYPE.CONTAINER) {
+    targetId = resolveContainerEntry(targetId, lastUsedStrobeId);
   }
 
   return {
-    state: match.target,
-    action: match.action,
+    state: targetId,
+    action: match.description,   // human-readable description for display
     transition: match,
   };
 }
 
 /**
- * Get state metadata (name, description, group, brightness).
+ * Get metadata for a node (name, description, group, type, brightness).
  */
-export function getStateInfo(stateId) {
-  const stateData = states[stateId];
-  if (!stateData) return null;
-
+export function getStateInfo(nodeId) {
+  const node = nodeMap[nodeId];
+  if (!node) return null;
   return {
-    id: stateId,
-    name: stateData.name,
-    description: stateData.description,
-    group: stateData.group,
-    brightness: stateData.brightness,
+    id:          node.id,
+    name:        node.name,
+    description: node.description,
+    group:       node.group,
+    type:        node.type,
+    brightness:  node.brightness ?? 0,
   };
 }
 
 /**
- * Get all state IDs.
+ * Get all node IDs in the graph.
  */
 export function getAllStates() {
-  return Object.keys(states);
+  return Object.keys(nodeMap);
 }
 
 /**
- * Get all state IDs visible in a given UI mode.
- * A state is visible if it has at least one incoming transition in that mode,
- * or is the "off" state.
+ * Get all node IDs reachable in a given UI mode.
+ * "OFF" is always included as the base state.
  */
 export function getVisibleStates(uiMode) {
-  const reachable = new Set(["off"]);
+  const reachable = new Set(["OFF"]);
 
-  for (const stateId of Object.keys(states)) {
-    const transitions = getAvailableTransitions(stateId, uiMode);
+  for (const nodeId of Object.keys(nodeMap)) {
+    const transitions = getAvailableTransitions(nodeId, uiMode);
     for (const t of transitions) {
-      reachable.add(t.target);
+      if (t.target !== "_self" && t.target !== "_next" && t.target !== "_prev") {
+        reachable.add(t.target);
+      }
     }
   }
 

@@ -29,7 +29,7 @@ export const OFF = {
     { action: "10C", target: "_self",            ui: UI.FULL,   kind: TRANSITION_KIND.INTERNAL,  description: "Enable Simple UI",                                condition: null, setsUiMode: "simple" },
     { action: "10H", target: "_self",            ui: UI.SIMPLE, kind: TRANSITION_KIND.INTERNAL,  description: "Disable Simple UI (switch to Advanced)",          condition: null, setsUiMode: "full" },
     // In Advanced UI, 10H opens the Simple UI config menu (state-map-only)
-    { action: "10H", target: "SIMPLE_UI_CONFIG", ui: UI.FULL,   kind: TRANSITION_KIND.CONFIG,    description: "Simple UI config menu",                           condition: null, stateMapOnly: true },
+    { action: "10H", target: "SIMPLE_UI_CONFIG", ui: UI.FULL,   kind: TRANSITION_KIND.CONFIG,    description: "Simple UI config menu",                           condition: null },
     { action: "13H", target: "FACTORY_RESET",    ui: UI.ANY,    kind: TRANSITION_KIND.NAVIGATE,  description: "Factory reset (hold ~4 s)",                       condition: null, stateMapOnly: true },
     { action: "15C", target: "VERSION_CHECK",    ui: UI.ANY,    kind: TRANSITION_KIND.NAVIGATE,  description: "Version check",                                   condition: null, stateMapOnly: true },
   ],

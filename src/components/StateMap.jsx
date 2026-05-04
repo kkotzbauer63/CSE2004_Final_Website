@@ -1,6 +1,8 @@
 // StateMap — orchestrator that picks the correct sub-view based on current state and UI mode
 import { useMemo } from "react";
 import { getAvailableTransitions, getVisibleStates } from "../stateMachine/engine.js";
+import { nodeMap } from "../data/graph.js";
+import { NODE_TYPE } from "../data/constants.js";
 import {
   BLINKY_STATES, STROBE_STATES, LOCKOUT_STATES, TACTICAL_STATES,
   RAMP_EXPANDED_STATES, AUX_PATTERN_STATES, AUX_COLOR_STATES,
@@ -15,6 +17,7 @@ import StateMapLockout   from "./statemap/StateMapLockout.jsx";
 import StateMapTactical  from "./statemap/StateMapTactical.jsx";
 import { StateMapAuxPattern, StateMapAuxColor } from "./statemap/StateMapAuxConfig.jsx";
 import StateMapSunset    from "./statemap/StateMapSunset.jsx";
+import StateMapConfigMenu from "./statemap/StateMapConfigMenu.jsx";
 import "./StateMap.css";
 
 export default function StateMap({
@@ -23,10 +26,11 @@ export default function StateMap({
   sunsetSeconds = 0, sunsetSpeedMultiplier = 1, toggleSunsetSpeed = () => {},
 }) {
   const isAdvanced         = uiMode === "full";
-  const inBlinkyExpanded   = isAdvanced && BLINKY_STATES.has(currentState);
+  const inConfigMenu       = nodeMap[currentState]?.type === NODE_TYPE.CONFIG_MENU;
+  const inBlinkyExpanded   = !inConfigMenu && isAdvanced && BLINKY_STATES.has(currentState);
   const inStrobeExpanded   = isAdvanced && STROBE_STATES.has(currentState);
-  const inLockoutExpanded  = isAdvanced && LOCKOUT_STATES.has(currentState);
-  const inTacticalExpanded = isAdvanced && TACTICAL_STATES.has(currentState);
+  const inLockoutExpanded  = !inConfigMenu && isAdvanced && LOCKOUT_STATES.has(currentState);
+  const inTacticalExpanded = !inConfigMenu && isAdvanced && TACTICAL_STATES.has(currentState);
   const inSunsetExpanded   = currentState === "SUNSET_TIMER";
   const inRampExpanded     = !inSunsetExpanded && RAMP_EXPANDED_STATES.has(currentState);
   const inAuxPatternExpanded = isAdvanced && AUX_PATTERN_STATES.has(currentState);
@@ -41,6 +45,7 @@ export default function StateMap({
 
   // Edges for the default / simple view (not used when a sub-cluster is expanded)
   const defaultEdges = useMemo(() => {
+    if (inConfigMenu) return [];
     if (inBlinkyExpanded || inStrobeExpanded || inLockoutExpanded || inTacticalExpanded || inRampExpanded) return [];
     if (inAuxPatternExpanded || inAuxColorExpanded || inSunsetExpanded) return [];
     const transitions = getAvailableTransitions(currentState, uiMode);
@@ -56,7 +61,17 @@ export default function StateMap({
       edgeMap.get(key).inputs.push(t.action);
     }
     return Array.from(edgeMap.values());
-  }, [currentState, uiMode, isAdvanced, inBlinkyExpanded, inStrobeExpanded, inRampExpanded, inAuxPatternExpanded, inAuxColorExpanded]);
+  }, [currentState, uiMode, isAdvanced, inConfigMenu, inBlinkyExpanded, inStrobeExpanded, inRampExpanded, inAuxPatternExpanded, inAuxColorExpanded]);
+
+  if (inConfigMenu) {
+    return (
+      <StateMapConfigMenu
+        node={nodeMap[currentState]}
+        onGoToState={onGoToState}
+        rampStyle={rampStyle}
+      />
+    );
+  }
 
   if (inAuxPatternExpanded) {
     return (

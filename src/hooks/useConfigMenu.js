@@ -49,6 +49,8 @@ export function useConfigMenu() {
   const isHeldRef      = useRef(false);  // true after hold threshold crossed
   const buzzHighRef    = useRef(true);   // alternates hi/lo each buzz tick
   const addTenFlashTimerRef = useRef(null);
+  const presentationFlashActiveRef = useRef(false);
+  const acceptAfterFlashRef = useRef(false);
 
   // ── Animation helpers ─────────────────────────────────────────────────────
 
@@ -87,6 +89,8 @@ export function useConfigMenu() {
     const results = sessionRef.current?.results ?? [];
     sessionRef.current = null;
     isHeldRef.current = false;
+    presentationFlashActiveRef.current = false;
+    acceptAfterFlashRef.current = false;
     setConfigLevel(null);
     setPhase(CM_PHASE.IDLE);
     onCompleteRef.current?.(results);
@@ -110,12 +114,21 @@ export function useConfigMenu() {
     setCurrentValue(0);
 
     // One quick flash per option. Clicking during the following gap selects it.
+    presentationFlashActiveRef.current = true;
+    acceptAfterFlashRef.current = false;
     setConfigLevel(CM_LEVEL.BLINK);
 
     blinkTimerRef.current = setTimeout(() => {
       if (sessionRef.current?.phase !== CM_PHASE.PRESENTING) return;
+      presentationFlashActiveRef.current = false;
       setConfigLevel(CM_LEVEL.ITEM);
       blinkTimerRef.current = null;
+
+      if (acceptAfterFlashRef.current) {
+        acceptAfterFlashRef.current = false;
+        startAccepting();
+        return;
+      }
 
       const gap = session.itemIndex === 0 ? CM_TIMING.FIRST_BLINK_GAP : CM_TIMING.BLINK_GAP;
       presentTimerRef.current = setTimeout(() => {
@@ -151,6 +164,8 @@ export function useConfigMenu() {
     const s = sessionRef.current;
     if (!s) return;
     // User chose this option — cancel the presentation timers.
+    presentationFlashActiveRef.current = false;
+    acceptAfterFlashRef.current = false;
     clearTimeout(blinkTimerRef.current);
     clearTimeout(presentTimerRef.current);
     s.enterItem();
@@ -184,6 +199,8 @@ export function useConfigMenu() {
 
     onCompleteRef.current = onComplete;
     isHeldRef.current = buttonAlreadyHeld;
+    presentationFlashActiveRef.current = false;
+    acceptAfterFlashRef.current = false;
     const session = createConfigSession(itemCount);
     sessionRef.current = session;
 
@@ -251,6 +268,10 @@ export function useConfigMenu() {
 
     if (s.phase === CM_PHASE.PRESENTING) {
       // Releasing the held button selects the currently flashed option.
+      if (presentationFlashActiveRef.current) {
+        acceptAfterFlashRef.current = true;
+        return;
+      }
       startAccepting();
 
     } else if (s.phase === CM_PHASE.ACCEPTING) {

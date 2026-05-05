@@ -64,8 +64,8 @@ export const RAMP_CONFIG_SCHEMA = {
 };
 
 export const RAMP_EXTRAS_SCHEMA = [
-  // itemIndex 0 (position 1): memory mode — 1C = auto memory, 2C = manual memory
-  { key: 'memoryMode', compute: (v) => v === 1 ? "auto" : "manual" },
+  // itemIndex 0 (position 1): 1C disables manual memory; 0C or any other value leaves it unchanged.
+  { key: 'memoryMode', compute: (v) => v === 1 ? "auto" : undefined },
   null,  // itemIndex 1 (position 2): manual memory timer — no config store effect
   null,  // itemIndex 2 (position 3): ramp-after-moon style — no config store effect
   // itemIndex 3 (position 4): turbo style

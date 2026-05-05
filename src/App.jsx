@@ -142,7 +142,10 @@ export default function App() {
             const entry = Array.isArray(schema)
               ? schema[result.itemIndex]
               : (schema[entryRampStyle] ?? schema.smooth)?.[result.itemIndex];
-            if (entry) updates[entry.key] = entry.compute(result.value);
+            if (entry) {
+              const value = entry.compute(result.value);
+              if (value !== undefined) updates[entry.key] = value;
+            }
           }
           if (Object.keys(updates).length > 0) update(updates);
         };
@@ -153,7 +156,10 @@ export default function App() {
           for (const result of results) {
             if (result.skipped) continue;
             const entry = schema[result.itemIndex];
-            if (entry) updates[entry.key] = entry.compute(result.value);
+            if (entry) {
+              const value = entry.compute(result.value);
+              if (value !== undefined) updates[entry.key] = value;
+            }
           }
           if (Object.keys(updates).length > 0) updateAdvancedConfig(updates);
 

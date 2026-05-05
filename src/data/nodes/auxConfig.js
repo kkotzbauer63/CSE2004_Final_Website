@@ -31,3 +31,37 @@ export const AUX_COLOR_CONFIG = {
     { action: "1C", target: "OFF",   ui: UI.FULL, kind: TRANSITION_KIND.NAVIGATE, description: "Exit (return to Off)",                    condition: null },
   ],
 };
+
+export const LOCKOUT_AUX_PATTERN_CONFIG = {
+  id: "LOCKOUT_AUX_PATTERN_CONFIG",
+  name: "Aux Pattern (Lockout)",
+  ui: UI.FULL,
+  type: NODE_TYPE.STATE,
+  parent: null,
+  description: "Configure aux LED pattern in lockout mode. 7C cycles: Off → Low → High → Blinking. Press 1C to return.",
+  exitMethod: null,
+  group: "config",
+  brightness: 0,
+  auxContext: "lockout",
+  transitions: [
+    { action: "7C", target: "_self", ui: UI.FULL, kind: TRANSITION_KIND.INTERNAL, description: "Next pattern (Off → Low → High → Blinking)", condition: null, auxEffect: "nextPattern", auxContext: "lockout" },
+    { action: "1C", target: "LOCKOUT", ui: UI.FULL, kind: TRANSITION_KIND.NAVIGATE, description: "Exit (return to Lockout)", condition: null },
+  ],
+};
+
+export const LOCKOUT_AUX_COLOR_CONFIG = {
+  id: "LOCKOUT_AUX_COLOR_CONFIG",
+  name: "Aux Color (Lockout)",
+  ui: UI.FULL,
+  type: NODE_TYPE.STATE,
+  parent: null,
+  description: "Configure aux LED color in lockout mode. 7H cycles through red, yellow, green, cyan, blue, magenta, white, disco, rainbow, and voltage. Press 1C to return.",
+  exitMethod: null,
+  group: "config",
+  brightness: 0,
+  auxContext: "lockout",
+  transitions: [
+    { action: "7H", target: "_self", ui: UI.FULL, kind: TRANSITION_KIND.INTERNAL, description: "Next color (cycles through all options)", condition: null, auxEffect: "nextColor", auxContext: "lockout" },
+    { action: "1C", target: "LOCKOUT", ui: UI.FULL, kind: TRANSITION_KIND.NAVIGATE, description: "Exit (return to Lockout)", condition: null },
+  ],
+};

@@ -23,8 +23,8 @@ export const TACTICAL_STATES = new Set([
 export const RAMP_EXPANDED_STATES = new Set(["RAMP", "SUNSET_TIMER"]);
 
 // States that trigger the expanded aux-config views
-export const AUX_PATTERN_STATES = new Set(["AUX_PATTERN_CONFIG"]);
-export const AUX_COLOR_STATES   = new Set(["AUX_COLOR_CONFIG"]);
+export const AUX_PATTERN_STATES = new Set(["AUX_PATTERN_CONFIG", "LOCKOUT_AUX_PATTERN_CONFIG"]);
+export const AUX_COLOR_STATES   = new Set(["AUX_COLOR_CONFIG", "LOCKOUT_AUX_COLOR_CONFIG"]);
 
 export const NODE_W = 110;
 export const NODE_H = 36;
@@ -32,24 +32,24 @@ export const CLUSTER_W = 130;
 export const CLUSTER_H = 42;
 
 // Advanced UI default view (blinky + strobe shown as container cluster nodes)
-// viewBox: "0 0 650 480"
+// viewBox: "0 0 700 560"; OFF is the hub, with related states arranged radially.
 export const DEFAULT_POSITIONS = {
-  OFF:                { x: 280, y: 30  },
-  RAMP:               { x: 280, y: 140 },
-  LOCKOUT:            { x: 80,  y: 85  },
-  BLINKY_GROUP:       { x: 500, y: 30  },
-  STROBE_GROUP:       { x: 80,  y: 230 },
-  MOMENTARY_MODE:     { x: 220, y: 305 },
-  TACTICAL_MODE:      { x: 50,  y: 330 },
-  MISC_CONFIG:        { x: 480, y: 140 },
+  OFF:                { x: 295, y: 252 },
+  RAMP:               { x: 295, y: 52  },
+  LOCKOUT:            { x: 140, y: 352 },
+  BLINKY_GROUP:       { x: 385, y: 75  },
+  STROBE_GROUP:       { x: 85,  y: 250 },
+  MOMENTARY_MODE:     { x: 195, y: 425 },
+  TACTICAL_MODE:      { x: 85,  y: 352 },
+  MISC_CONFIG:        { x: 495, y: 252 },
   // Aux config states (accessible from Off via 7C / 7H)
-  AUX_PATTERN_CONFIG: { x: 490, y: 80  },
-  AUX_COLOR_CONFIG:   { x: 490, y: 195 },
+  AUX_PATTERN_CONFIG: { x: 468, y: 152 },
+  AUX_COLOR_CONFIG:   { x: 468, y: 352 },
   // Simple UI ramp config (accessible from Off via 10H in Advanced UI)
-  SIMPLE_UI_CONFIG:   { x: 220, y: 85  },
+  SIMPLE_UI_CONFIG:   { x: 195, y: 75  },
   // Version check / factory reset
-  VERSION_CHECK:      { x: 290, y: 385 },
-  FACTORY_RESET:      { x: 490, y: 305 },
+  VERSION_CHECK:      { x: 295, y: 452 },
+  FACTORY_RESET:      { x: 385, y: 425 },
 };
 
 // Simple UI view (fewer states, no cluster nodes)
@@ -97,12 +97,16 @@ export const RAMP_EXPANDED_POSITIONS = {
   RAMP_EXTRAS_CONFIG: { x: 360, y: 255 },
 };
 
-// Expanded lockout view — top row: OFF / LOCKOUT / RAMP; bottom: AUTO_LOCK_CONFIG
+// Expanded lockout view
 export const LOCKOUT_POSITIONS = {
-  OFF:              { x: 30,  y: 30  },
-  LOCKOUT:          { x: 195, y: 30  },
-  RAMP:             { x: 360, y: 30  },
-  AUTO_LOCK_CONFIG: { x: 195, y: 225 },
+  OFF:                        { x: 30,  y: 35  },
+  LOCKOUT:                    { x: 235, y: 130 },
+  RAMP:                       { x: 440, y: 35  },
+  LOCKOUT_MOMENTARY_LOW:      { x: 95,  y: 120 },
+  LOCKOUT_MOMENTARY_MOON:     { x: 95,  y: 200 },
+  LOCKOUT_AUX_PATTERN_CONFIG: { x: 375, y: 120 },
+  LOCKOUT_AUX_COLOR_CONFIG:   { x: 375, y: 200 },
+  AUTO_LOCK_CONFIG:           { x: 235, y: 295 },
 };
 
 // Expanded tactical mode view

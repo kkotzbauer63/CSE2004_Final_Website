@@ -360,8 +360,8 @@ export default function FlashlightSimulator({
               </span>
               <span className="simulator__value simulator__value--mono">
                 {configInfo.phase === CM_PHASE.PRESENTING
-                  ? "hold = skip · release = enter"
-                  : `${configInfo.currentValue} (click +1 · hold +10 · wait = confirm)`}
+                  ? "release = select flashed option"
+                  : `${configInfo.currentValue} (click +1 · hold +10/s · wait = confirm)`}
               </span>
             </div>
           </>

@@ -56,6 +56,8 @@ export default function App() {
     auxDisplay,
     auxPatternIndex,
     auxColorIndex,
+    lockoutAuxPatternIndex,
+    lockoutAuxColorIndex,
     advancedConfig,
     simpleConfig,
     updateAdvancedConfig,
@@ -319,6 +321,8 @@ export default function App() {
             rampConfig={activeRampConfig}
             auxPatternIndex={auxPatternIndex}
             auxColorIndex={auxColorIndex}
+            lockoutAuxPatternIndex={lockoutAuxPatternIndex}
+            lockoutAuxColorIndex={lockoutAuxColorIndex}
             sunsetSeconds={sunsetSeconds}
             sunsetSpeedMultiplier={sunsetSpeedMultiplier}
             toggleSunsetSpeed={toggleSunsetSpeed}

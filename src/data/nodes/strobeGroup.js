@@ -1,4 +1,9 @@
 import { UI, NODE_TYPE, TRANSITION_KIND } from "../constants.js";
+import {
+  STROBE_MODE_DEFINITIONS,
+  STROBE_MODE_ORDER,
+  buildStrobeModeTransitions,
+} from "../../utils/strobeModes.js";
 
 // ─── Container ───────────────────────────────────────────────────────────────
 
@@ -14,7 +19,7 @@ export const STROBE_GROUP = {
   brightness: 100,
 
   entryPoint: "last_used",  // Defaults to PARTY_STROBE in the engine
-  childIds: ["PARTY_STROBE", "TACTICAL_STROBE", "POLICE_STROBE", "LIGHTNING", "CANDLE", "BIKE_FLASHER"],
+  childIds: STROBE_MODE_ORDER,
   cycleAction: { forward: "2C", backward: "4C" },
 
   sharedTransitions: [
@@ -22,7 +27,6 @@ export const STROBE_GROUP = {
     { action: "2C", target: "_next",        ui: UI.FULL, kind: TRANSITION_KIND.NAVIGATE, description: "Next strobe / mood mode",        condition: null },
     { action: "4C", target: "_prev",        ui: UI.FULL, kind: TRANSITION_KIND.NAVIGATE, description: "Previous strobe / mood mode",    condition: null },
     { action: "5C", target: "MOMENTARY_MODE", ui: UI.FULL, kind: TRANSITION_KIND.NAVIGATE, description: "Momentary mode (current strobe)", condition: null },
-    { action: "3C", target: "_self",        ui: UI.FULL, kind: TRANSITION_KIND.INTERNAL, description: "Next channel mode",              condition: null },
   ],
 
   transitions: [],
@@ -36,17 +40,12 @@ export const PARTY_STROBE = {
   ui: UI.FULL,
   type: NODE_TYPE.STATE,
   parent: "STROBE_GROUP",
-  description: "Rapid consistent strobe. Hold to adjust speed.",
+  description: STROBE_MODE_DEFINITIONS.PARTY_STROBE.description,
   exitMethod: null,
   group: "strobe",
-  brightness: 100,
+  brightness: STROBE_MODE_DEFINITIONS.PARTY_STROBE.brightness,
 
-  transitions: [
-    { action: "1H", target: "_self",          ui: UI.FULL, kind: TRANSITION_KIND.INTERNAL, description: "Faster",                              condition: null, rampEffect: "up" },
-    { action: "2H", target: "_self",          ui: UI.FULL, kind: TRANSITION_KIND.INTERNAL, description: "Slower",                              condition: null, rampEffect: "down" },
-    { action: "2C", target: "TACTICAL_STROBE", ui: UI.FULL, kind: TRANSITION_KIND.NAVIGATE, description: "Next strobe mode (Tactical Strobe)", condition: null },
-    { action: "4C", target: "BIKE_FLASHER",   ui: UI.FULL, kind: TRANSITION_KIND.NAVIGATE, description: "Prev strobe mode (Bike Flasher)",    condition: null },
-  ],
+  transitions: buildStrobeModeTransitions("PARTY_STROBE"),
 };
 
 export const TACTICAL_STROBE = {
@@ -55,17 +54,12 @@ export const TACTICAL_STROBE = {
   ui: UI.FULL,
   type: NODE_TYPE.STATE,
   parent: "STROBE_GROUP",
-  description: "High-speed disorienting strobe. Hold to adjust speed.",
+  description: STROBE_MODE_DEFINITIONS.TACTICAL_STROBE.description,
   exitMethod: null,
   group: "strobe",
-  brightness: 100,
+  brightness: STROBE_MODE_DEFINITIONS.TACTICAL_STROBE.brightness,
 
-  transitions: [
-    { action: "1H", target: "_self",       ui: UI.FULL, kind: TRANSITION_KIND.INTERNAL, description: "Faster",                              condition: null, rampEffect: "up" },
-    { action: "2H", target: "_self",       ui: UI.FULL, kind: TRANSITION_KIND.INTERNAL, description: "Slower",                              condition: null, rampEffect: "down" },
-    { action: "2C", target: "POLICE_STROBE", ui: UI.FULL, kind: TRANSITION_KIND.NAVIGATE, description: "Next strobe mode (Police Strobe)", condition: null },
-    { action: "4C", target: "PARTY_STROBE", ui: UI.FULL, kind: TRANSITION_KIND.NAVIGATE, description: "Prev strobe mode (Party Strobe)",  condition: null },
-  ],
+  transitions: buildStrobeModeTransitions("TACTICAL_STROBE"),
 };
 
 export const POLICE_STROBE = {
@@ -74,15 +68,12 @@ export const POLICE_STROBE = {
   ui: UI.FULL,
   type: NODE_TYPE.STATE,
   parent: "STROBE_GROUP",
-  description: "Alternating high/low strobe. No speed adjustment. Requires 2+ LED colors.",
+  description: STROBE_MODE_DEFINITIONS.POLICE_STROBE.description,
   exitMethod: null,
   group: "strobe",
-  brightness: 100,
+  brightness: STROBE_MODE_DEFINITIONS.POLICE_STROBE.brightness,
 
-  transitions: [
-    { action: "2C", target: "LIGHTNING",       ui: UI.FULL, kind: TRANSITION_KIND.NAVIGATE, description: "Next strobe mode (Lightning)",        condition: null },
-    { action: "4C", target: "TACTICAL_STROBE", ui: UI.FULL, kind: TRANSITION_KIND.NAVIGATE, description: "Prev strobe mode (Tactical Strobe)", condition: null },
-  ],
+  transitions: buildStrobeModeTransitions("POLICE_STROBE"),
 };
 
 export const LIGHTNING = {
@@ -91,16 +82,12 @@ export const LIGHTNING = {
   ui: UI.FULL,
   type: NODE_TYPE.STATE,
   parent: "STROBE_GROUP",
-  description: "Random lightning storm simulation. WARNING: may reach full power suddenly.",
+  description: STROBE_MODE_DEFINITIONS.LIGHTNING.description,
   exitMethod: null,
   group: "strobe",
-  brightness: 100,
+  brightness: STROBE_MODE_DEFINITIONS.LIGHTNING.brightness,
 
-  transitions: [
-    { action: "1H", target: "_self",      ui: UI.FULL, kind: TRANSITION_KIND.INTERNAL, description: "Interrupt / start new flash",         condition: null },
-    { action: "2C", target: "CANDLE",     ui: UI.FULL, kind: TRANSITION_KIND.NAVIGATE, description: "Next strobe mode (Candle)",           condition: null },
-    { action: "4C", target: "POLICE_STROBE", ui: UI.FULL, kind: TRANSITION_KIND.NAVIGATE, description: "Prev strobe mode (Police Strobe)", condition: null },
-  ],
+  transitions: buildStrobeModeTransitions("LIGHTNING"),
 };
 
 export const CANDLE = {
@@ -109,18 +96,12 @@ export const CANDLE = {
   ui: UI.FULL,
   type: NODE_TYPE.STATE,
   parent: "STROBE_GROUP",
-  description: "Realistic candle flame simulation. Configurable brightness. Supports sunset timer.",
+  description: STROBE_MODE_DEFINITIONS.CANDLE.description,
   exitMethod: null,
   group: "strobe",
-  brightness: 30,
+  brightness: STROBE_MODE_DEFINITIONS.CANDLE.brightness,
 
-  transitions: [
-    { action: "1H", target: "_self",       ui: UI.FULL, kind: TRANSITION_KIND.INTERNAL, description: "Brighter",                           condition: null, rampEffect: "up" },
-    { action: "2H", target: "_self",       ui: UI.FULL, kind: TRANSITION_KIND.INTERNAL, description: "Dimmer",                             condition: null, rampEffect: "down" },
-    { action: "2C", target: "BIKE_FLASHER", ui: UI.FULL, kind: TRANSITION_KIND.NAVIGATE, description: "Next strobe mode (Bike Flasher)",  condition: null },
-    { action: "4C", target: "LIGHTNING",   ui: UI.FULL, kind: TRANSITION_KIND.NAVIGATE, description: "Prev strobe mode (Lightning)",      condition: null },
-    { action: "5H", target: "_self",       ui: UI.FULL, kind: TRANSITION_KIND.INTERNAL, description: "Sunset timer: start / add 5 min",  condition: null },
-  ],
+  transitions: buildStrobeModeTransitions("CANDLE"),
 };
 
 export const BIKE_FLASHER = {
@@ -129,15 +110,10 @@ export const BIKE_FLASHER = {
   ui: UI.FULL,
   type: NODE_TYPE.STATE,
   parent: "STROBE_GROUP",
-  description: "Medium brightness with periodic brighter stutter once per second. Configurable brightness.",
+  description: STROBE_MODE_DEFINITIONS.BIKE_FLASHER.description,
   exitMethod: null,
   group: "strobe",
-  brightness: 50,
+  brightness: STROBE_MODE_DEFINITIONS.BIKE_FLASHER.brightness,
 
-  transitions: [
-    { action: "1H", target: "_self",      ui: UI.FULL, kind: TRANSITION_KIND.INTERNAL, description: "Brighter",                              condition: null, rampEffect: "up" },
-    { action: "2H", target: "_self",      ui: UI.FULL, kind: TRANSITION_KIND.INTERNAL, description: "Dimmer",                                condition: null, rampEffect: "down" },
-    { action: "2C", target: "PARTY_STROBE", ui: UI.FULL, kind: TRANSITION_KIND.NAVIGATE, description: "Next strobe mode (Party Strobe, wraps)", condition: null },
-    { action: "4C", target: "CANDLE",    ui: UI.FULL, kind: TRANSITION_KIND.NAVIGATE, description: "Prev strobe mode (Candle)",              condition: null },
-  ],
+  transitions: buildStrobeModeTransitions("BIKE_FLASHER"),
 };

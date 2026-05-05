@@ -5,14 +5,13 @@
  * which settings it controls:
  *
  *   For each menu item:
- *     1. PRESENTING — Light blinks once (level 90) then holds at level 20.
- *        • User holds the button  → skip this item (when released, go to next).
- *        • User releases quickly  → enter value for this item.
- *     2. ACCEPTING  — Light buzzes between two dim levels.
+ *     1. PRESENTING — Light flashes once at level 90 for each option.
+ *        • User releases the held button or clicks → select the currently indicated option.
+ *        • If the user does not click, the menu advances to the next option.
+ *     2. ACCEPTING  — Light buzzes between level 20 and level 90.
  *        • Click (<500 ms)        → add 1 to accumulated value.
- *        • Hold  (≥500 ms)        → add 10 to accumulated value.
- *        • No input for 3 s       → confirm value, move to next item.
- *   After all items: exit and return accumulated results.
+ *        • Hold                  → light goes off and adds 10 once per second, flashing at level 90 for each +10.
+ *        • No input for 3 s       → confirm value and exit to the previous state.
  *
  * This module is framework-free.  It provides:
  *   • CM_PHASE    — phase name constants
@@ -36,20 +35,21 @@ export const CM_PHASE = Object.freeze({
 // ── Brightness levels (Anduril 1–150 scale) ───────────────────────────────────
 export const CM_LEVEL = Object.freeze({
   BLINK:    90,   // brief blink at item presentation start
-  ITEM:     20,   // steady level while awaiting skip/enter decision
-  BUZZ_HI:  15,   // high phase of the value-entry buzz
-  BUZZ_LO:   5,   // low phase of the value-entry buzz
+  ITEM:     0,    // between option flashes while awaiting selection
+  BUZZ_HI:  90,   // high phase of the value-entry buzz
+  BUZZ_LO:  20,   // low phase of the value-entry buzz
   OFF:       0,
 });
 
 // ── Timing (milliseconds) ─────────────────────────────────────────────────────
 export const CM_TIMING = Object.freeze({
-  BLINK_ON:        300,   // on-time of the item presentation blink
-  BLINK_OFF:       100,   // silence after blink before settling at ITEM level
-  BUZZ_HALF:        80,   // duration of each hi/lo phase of the accepting buzz
+  BLINK_ON:        100,   // on-time of each option presentation flash
+  FIRST_BLINK_GAP: 2500,  // gap after option 1 flash before option 2
+  BLINK_GAP:       1500,  // gap after later option flashes
+  BUZZ_HALF:       100,   // duration of each hi/lo phase of the accepting buzz
   HOLD_THRESHOLD:  500,   // press duration that counts as a hold (skip / +10)
+  HOLD_REPEAT:    1000,   // while held in value entry, add +10 every second
   INPUT_TIMEOUT:  3000,   // inactivity duration before auto-confirming the current value
-  PRESENT_TIMEOUT: 3000,  // idle time at ITEM level before auto-skipping a presented item
 });
 
 // ── Session factory ───────────────────────────────────────────────────────────

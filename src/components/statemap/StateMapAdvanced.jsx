@@ -24,15 +24,15 @@ export default function StateMapAdvanced({ visibleStates, defaultEdges, currentS
         <span className="statemap__mode">Advanced UI</span>
       </div>
       <div className="statemap__container">
-        <svg className="statemap__svg" viewBox="0 0 650 480" xmlns="http://www.w3.org/2000/svg">
+        <svg className="statemap__svg" viewBox="0 0 700 560" xmlns="http://www.w3.org/2000/svg">
           <ArrowDef />
 
           {/* Simple UI mode-switch pseudo-node — upper-left, connected to OFF via 10C */}
           {(() => {
             const atOff = currentState === "OFF";
-            const nx = 80, ny = 10, nw = 110, nh = 36;
+            const nx = 30, ny = 85, nw = 110, nh = 36;
             // edge: OFF left-center → node right-center
-            const ex1 = 280, ey1 = 48, ex2 = nx + nw, ey2 = ny + nh / 2;
+            const ex1 = DEFAULT_POSITIONS.OFF.x, ey1 = DEFAULT_POSITIONS.OFF.y + 18, ex2 = nx + nw, ey2 = ny + nh / 2;
             const mx = (ex1 + ex2) / 2, my = (ey1 + ey2) / 2;
             return (
               <g>

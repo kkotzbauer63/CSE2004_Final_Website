@@ -20,7 +20,12 @@ import {
   MISC_CONFIG, TACTICAL_CONFIG, CHANNEL_MODE_CONFIG,
 } from "./nodes/configMenus.js";
 import { VERSION_CHECK, FACTORY_RESET } from "./nodes/actions.js";
-import { AUX_PATTERN_CONFIG, AUX_COLOR_CONFIG } from "./nodes/auxConfig.js";
+import {
+  AUX_PATTERN_CONFIG,
+  AUX_COLOR_CONFIG,
+  LOCKOUT_AUX_PATTERN_CONFIG,
+  LOCKOUT_AUX_COLOR_CONFIG,
+} from "./nodes/auxConfig.js";
 import { SUNSET_TIMER } from "./nodes/sunsetTimer.js";
 
 // ─── Full node list ───────────────────────────────────────────────────────────
@@ -40,7 +45,7 @@ const ALL_NODES = [
   VOLTAGE_CONFIG, THERMAL_CONFIG, AUTO_LOCK_CONFIG,
   MISC_CONFIG, TACTICAL_CONFIG, CHANNEL_MODE_CONFIG,
   // Aux config states
-  AUX_PATTERN_CONFIG, AUX_COLOR_CONFIG,
+  AUX_PATTERN_CONFIG, AUX_COLOR_CONFIG, LOCKOUT_AUX_PATTERN_CONFIG, LOCKOUT_AUX_COLOR_CONFIG,
   // Sunset timer
   SUNSET_TIMER,
   // Special action states

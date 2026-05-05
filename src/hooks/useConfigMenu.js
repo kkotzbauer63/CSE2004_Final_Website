@@ -39,19 +39,24 @@ export function useConfigMenu() {
   // All mutable state lives in refs so stable [] callbacks always see fresh values.
   const sessionRef     = useRef(null);   // current ConfigSession
   const onCompleteRef  = useRef(null);   // callback for when the menu finishes
-  const blinkTimerRef  = useRef(null);   // timeouts for the item presentation blink
-  const presentTimerRef = useRef(null);  // auto-skip timeout while held at ITEM level
+  const blinkTimerRef  = useRef(null);   // timeout for the option presentation flash
+  const presentTimerRef = useRef(null);  // auto-advance timeout between option flashes
   const buzzTimerRef   = useRef(null);   // timeout chain for the accepting-phase buzz
   const holdTimerRef   = useRef(null);   // 500 ms hold-detection timer
+  const holdVisualTimerRef = useRef(null); // switches value entry from buzz to off while held
+  const holdRepeatTimerRef = useRef(null); // repeat +10 timer while held in value entry
   const inputTimerRef  = useRef(null);   // 3 s inactivity timer in ACCEPTING
   const isHeldRef      = useRef(false);  // true after hold threshold crossed
   const buzzHighRef    = useRef(true);   // alternates hi/lo each buzz tick
+  const addTenFlashTimerRef = useRef(null);
 
   // ── Animation helpers ─────────────────────────────────────────────────────
 
   const stopBuzz = useCallback(() => {
     clearTimeout(buzzTimerRef.current);
     buzzTimerRef.current = null;
+    clearTimeout(addTenFlashTimerRef.current);
+    addTenFlashTimerRef.current = null;
   }, []);
 
   const startBuzz = useCallback(() => {
@@ -73,6 +78,8 @@ export function useConfigMenu() {
   /** Tear down the session and invoke the onComplete callback. */
   const finish = useCallback(() => {
     clearTimeout(holdTimerRef.current);
+    clearTimeout(holdVisualTimerRef.current);
+    clearTimeout(holdRepeatTimerRef.current);
     clearTimeout(inputTimerRef.current);
     clearTimeout(blinkTimerRef.current);
     clearTimeout(presentTimerRef.current);
@@ -90,44 +97,40 @@ export function useConfigMenu() {
    * After PRESENT_TIMEOUT ms of inactivity at ITEM level, auto-skips the item.
    * Called when starting the menu, skipping an item, or after confirming a value.
    */
-  const startPresenting = useCallback((session) => {
+  function startPresenting(session) {
     clearTimeout(blinkTimerRef.current);
     clearTimeout(presentTimerRef.current);
+    clearTimeout(holdTimerRef.current);
+    clearTimeout(holdVisualTimerRef.current);
+    clearTimeout(holdRepeatTimerRef.current);
     stopBuzz();
 
     setPhase(CM_PHASE.PRESENTING);
     setItemIndex(session.itemIndex);
     setCurrentValue(0);
 
-    // Blink: BLINK level → brief off → ITEM level
+    // One quick flash per option. Clicking during the following gap selects it.
     setConfigLevel(CM_LEVEL.BLINK);
 
     blinkTimerRef.current = setTimeout(() => {
       if (sessionRef.current?.phase !== CM_PHASE.PRESENTING) return;
-      setConfigLevel(CM_LEVEL.OFF);
+      setConfigLevel(CM_LEVEL.ITEM);
+      blinkTimerRef.current = null;
 
-      blinkTimerRef.current = setTimeout(() => {
-        if (sessionRef.current?.phase !== CM_PHASE.PRESENTING) return;
-        setConfigLevel(CM_LEVEL.ITEM);
-        blinkTimerRef.current = null;
-
-        // After the blink settles, start the idle timeout.
-        // If the user doesn't interact within PRESENT_TIMEOUT ms, auto-skip
-        // this item and advance — or exit the menu if it was the last item.
-        presentTimerRef.current = setTimeout(() => {
-          const s = sessionRef.current;
-          if (!s || s.phase !== CM_PHASE.PRESENTING) return;
-          s.skip();
-          setItemIndex(s.itemIndex);
-          if (s.isDone()) {
-            finish();
-          } else {
-            startPresenting(s);
-          }
-        }, CM_TIMING.PRESENT_TIMEOUT);
-      }, CM_TIMING.BLINK_OFF);
+      const gap = session.itemIndex === 0 ? CM_TIMING.FIRST_BLINK_GAP : CM_TIMING.BLINK_GAP;
+      presentTimerRef.current = setTimeout(() => {
+        const s = sessionRef.current;
+        if (!s || s.phase !== CM_PHASE.PRESENTING) return;
+        s.skip();
+        setItemIndex(s.itemIndex);
+        if (s.isDone()) {
+          finish();
+        } else {
+          startPresenting(s);
+        }
+      }, gap);
     }, CM_TIMING.BLINK_ON);
-  }, [stopBuzz, finish]);
+  }
 
   /**
    * Arm the 3-second inactivity timer.  Resets each time the user inputs.
@@ -139,22 +142,19 @@ export function useConfigMenu() {
       const s = sessionRef.current;
       if (!s || s.phase !== CM_PHASE.ACCEPTING) return;
       s.confirm();
-      if (s.isDone()) {
-        finish();
-      } else {
-        stopBuzz();
-        startPresenting(s);
-      }
+      finish();
     }, CM_TIMING.INPUT_TIMEOUT);
-  }, [finish, stopBuzz, startPresenting]);
+  }, [finish]);
 
   /** Switch from PRESENTING to ACCEPTING for the current item. */
   const startAccepting = useCallback(() => {
     const s = sessionRef.current;
     if (!s) return;
-    // User chose to enter a value — cancel the auto-skip timer
+    // User chose this option — cancel the presentation timers.
+    clearTimeout(blinkTimerRef.current);
     clearTimeout(presentTimerRef.current);
     s.enterItem();
+    isHeldRef.current = false;
     setPhase(CM_PHASE.ACCEPTING);
     startBuzz();
     resetInputTimeout();
@@ -176,6 +176,8 @@ export function useConfigMenu() {
    */
   const start = useCallback((itemCount, onComplete, buttonAlreadyHeld = false) => {
     clearTimeout(holdTimerRef.current);
+    clearTimeout(holdVisualTimerRef.current);
+    clearTimeout(holdRepeatTimerRef.current);
     clearTimeout(inputTimerRef.current);
     clearTimeout(presentTimerRef.current);
     stopBuzz();
@@ -195,30 +197,43 @@ export function useConfigMenu() {
     const s = sessionRef.current;
     if (!s) return;
 
-    // User is interacting — cancel the auto-skip timer for this item
-    clearTimeout(presentTimerRef.current);
-
-    // Reset held flag for this new press
+    // Reset held flag for this new press.
     isHeldRef.current = false;
     clearTimeout(holdTimerRef.current);
+    clearTimeout(holdVisualTimerRef.current);
+    clearTimeout(holdRepeatTimerRef.current);
 
     if (s.phase === CM_PHASE.PRESENTING) {
-      // Hold threshold: user wants to skip this item
-      holdTimerRef.current = setTimeout(() => {
-        isHeldRef.current = true;
-        // No visual change here — just mark skip intent; acted on release
-      }, CM_TIMING.HOLD_THRESHOLD);
+      // Freeze the current option while the click is in progress.
+      clearTimeout(presentTimerRef.current);
 
     } else if (s.phase === CM_PHASE.ACCEPTING) {
-      // Hold threshold: user is entering +10
-      holdTimerRef.current = setTimeout(() => {
+      const addTen = () => {
+        const active = sessionRef.current;
+        if (!active || active.phase !== CM_PHASE.ACCEPTING) return;
         isHeldRef.current = true;
-        s.addValue(10);
-        setCurrentValue(s.value);
+        active.addValue(10);
+        setCurrentValue(active.value);
+        stopBuzz();
+        setConfigLevel(CM_LEVEL.BLINK);
+        addTenFlashTimerRef.current = setTimeout(() => {
+          if (sessionRef.current?.phase === CM_PHASE.ACCEPTING && isHeldRef.current) {
+            setConfigLevel(CM_LEVEL.OFF);
+          }
+        }, CM_TIMING.BLINK_ON);
         resetInputTimeout();
+        holdRepeatTimerRef.current = setTimeout(addTen, CM_TIMING.HOLD_REPEAT);
+      };
+
+      holdVisualTimerRef.current = setTimeout(() => {
+        if (sessionRef.current?.phase !== CM_PHASE.ACCEPTING) return;
+        isHeldRef.current = true;
+        stopBuzz();
+        setConfigLevel(CM_LEVEL.OFF);
       }, CM_TIMING.HOLD_THRESHOLD);
+      holdTimerRef.current = setTimeout(addTen, CM_TIMING.HOLD_REPEAT);
     }
-  }, [resetInputTimeout]);
+  }, [resetInputTimeout, stopBuzz]);
 
   /**
    * Call on pointerup / touchend / pointerleave while the config menu is active.
@@ -229,22 +244,14 @@ export function useConfigMenu() {
 
     clearTimeout(holdTimerRef.current);
     holdTimerRef.current = null;
+    clearTimeout(holdVisualTimerRef.current);
+    holdVisualTimerRef.current = null;
+    clearTimeout(holdRepeatTimerRef.current);
+    holdRepeatTimerRef.current = null;
 
     if (s.phase === CM_PHASE.PRESENTING) {
-      if (isHeldRef.current) {
-        // Held past threshold → skip this item
-        isHeldRef.current = false;
-        s.skip();
-        setItemIndex(s.itemIndex);
-        if (s.isDone()) {
-          finish();
-        } else {
-          startPresenting(s);
-        }
-      } else {
-        // Quick release → enter value for this item
-        startAccepting();
-      }
+      // Releasing the held button selects the currently flashed option.
+      startAccepting();
 
     } else if (s.phase === CM_PHASE.ACCEPTING) {
       if (!isHeldRef.current) {
@@ -252,10 +259,13 @@ export function useConfigMenu() {
         s.addValue(1);
         setCurrentValue(s.value);
         resetInputTimeout();
+      } else {
+        startBuzz();
+        resetInputTimeout();
       }
       isHeldRef.current = false;
     }
-  }, [finish, startPresenting, startAccepting, resetInputTimeout]);
+  }, [startAccepting, resetInputTimeout, startBuzz]);
 
   return {
     configLevel,

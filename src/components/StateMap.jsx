@@ -24,6 +24,7 @@ export default function StateMap({
   currentState, uiMode, onGoToState, onInput, level = 0,
   rampStyle = "smooth", rampConfig = null,
   auxPatternIndex = 0, auxColorIndex = 0,
+  lockoutAuxPatternIndex = 0, lockoutAuxColorIndex = 0,
   sunsetSeconds = 0, sunsetSpeedMultiplier = 1, toggleSunsetSpeed = () => {},
 }) {
   const isAdvanced         = uiMode === "full";
@@ -62,7 +63,20 @@ export default function StateMap({
       edgeMap.get(key).inputs.push(t.action);
     }
     return Array.from(edgeMap.values());
-  }, [currentState, uiMode, isAdvanced, inConfigMenu, inBlinkyExpanded, inStrobeExpanded, inRampExpanded, inAuxPatternExpanded, inAuxColorExpanded]);
+  }, [
+    currentState,
+    uiMode,
+    isAdvanced,
+    inConfigMenu,
+    inBlinkyExpanded,
+    inStrobeExpanded,
+    inLockoutExpanded,
+    inTacticalExpanded,
+    inRampExpanded,
+    inAuxPatternExpanded,
+    inAuxColorExpanded,
+    inSunsetExpanded,
+  ]);
 
   if (inConfigMenu) {
     return (
@@ -75,9 +89,11 @@ export default function StateMap({
   }
 
   if (inAuxPatternExpanded) {
+    const isLockoutAux = currentState === "LOCKOUT_AUX_PATTERN_CONFIG";
     return (
       <StateMapAuxPattern
-        auxPatternIndex={auxPatternIndex}
+        auxPatternIndex={isLockoutAux ? lockoutAuxPatternIndex : auxPatternIndex}
+        context={isLockoutAux ? "lockout" : "off"}
         onGoToState={onGoToState}
         onInput={onInput}
       />
@@ -85,9 +101,11 @@ export default function StateMap({
   }
 
   if (inAuxColorExpanded) {
+    const isLockoutAux = currentState === "LOCKOUT_AUX_COLOR_CONFIG";
     return (
       <StateMapAuxColor
-        auxColorIndex={auxColorIndex}
+        auxColorIndex={isLockoutAux ? lockoutAuxColorIndex : auxColorIndex}
+        context={isLockoutAux ? "lockout" : "off"}
         onGoToState={onGoToState}
         onInput={onInput}
       />
@@ -102,6 +120,7 @@ export default function StateMap({
         reachableFromCurrent={reachableFromCurrent}
         onGoToState={onGoToState}
         uiMode={uiMode}
+        onInput={onInput}
       />
     );
   }
@@ -113,6 +132,7 @@ export default function StateMap({
         visibleStates={visibleStates}
         reachableFromCurrent={reachableFromCurrent}
         onGoToState={onGoToState}
+        onInput={onInput}
         uiMode={uiMode}
       />
     );
@@ -167,6 +187,7 @@ export default function StateMap({
         reachableFromCurrent={reachableFromCurrent}
         onGoToState={onGoToState}
         uiMode={uiMode}
+        onInput={onInput}
       />
     );
   }

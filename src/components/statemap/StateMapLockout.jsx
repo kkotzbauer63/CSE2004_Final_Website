@@ -5,6 +5,57 @@ import { getStateInfo, getAvailableTransitions } from "../../stateMachine/engine
 import { LOCKOUT_POSITIONS, NODE_W, NODE_H } from "./statemapLayouts.js";
 import { ArrowDef, EdgeLine, StateNode } from "./StateMapPrimitives.jsx";
 
+const LOCKOUT_STATE_NODES = [
+  "OFF",
+  "LOCKOUT",
+  "RAMP",
+  "LOCKOUT_AUX_PATTERN_CONFIG",
+  "LOCKOUT_AUX_COLOR_CONFIG",
+  "AUTO_LOCK_CONFIG",
+];
+
+const LOCKOUT_ACTION_NODES = [
+  {
+    id: "LOCKOUT_MOMENTARY_LOW",
+    label: "1H Momentary Low",
+    action: "1H",
+  },
+  {
+    id: "LOCKOUT_MOMENTARY_MOON",
+    label: "2H Momentary Moon",
+    action: "2H",
+  },
+];
+
+function ActionNode({ pos, label, isReachable, onClick }) {
+  return (
+    <g
+      className={`statemap__node ${isReachable ? "statemap__node--reachable" : "statemap__node--dimmed"}`}
+      onClick={onClick}
+      style={{ cursor: "pointer" }}
+    >
+      <rect
+        x={pos.x} y={pos.y} width={NODE_W} height={NODE_H} rx="2"
+        fill="#1c1c1e"
+        stroke={isReachable ? "#D4A84B" : "#333"}
+        strokeWidth="1"
+        strokeDasharray="4 3"
+      />
+      <rect x={pos.x} y={pos.y} width="3" height={NODE_H} rx="1"
+        fill="#D4A84B" opacity={isReachable ? 0.7 : 0.25}
+      />
+      <text
+        x={pos.x + NODE_W / 2 + 2} y={pos.y + NODE_H / 2 + 1}
+        textAnchor="middle" dominantBaseline="middle"
+        className="statemap__node-label"
+        fill={isReachable ? "#bbb" : "#555"}
+      >
+        {label}
+      </text>
+    </g>
+  );
+}
+
 export default function StateMapLockout({
   currentState, reachableFromCurrent, onGoToState, uiMode, isAdvanced, onInput,
 }) {
@@ -20,14 +71,6 @@ export default function StateMapLockout({
     return Array.from(edgeMap.values());
   }, [uiMode]);
 
-  // Annotation anchor: centered on the LOCKOUT node, starting just below it
-  const lockoutPos  = LOCKOUT_POSITIONS["LOCKOUT"];
-  const annotX      = lockoutPos.x + NODE_W / 2;
-  const annotY      = lockoutPos.y + NODE_H + 18;
-
-  // Clickable style for 7C / 7H aux actions
-  const clickStyle = { pointerEvents: "auto", cursor: "pointer" };
-
   return (
     <div className="statemap">
       <div className="statemap__header">
@@ -35,7 +78,7 @@ export default function StateMapLockout({
         <span className="statemap__mode">{isAdvanced ? "Advanced UI" : "Simple UI"}</span>
       </div>
       <div className="statemap__container">
-        <svg className="statemap__svg" viewBox="0 0 500 290" xmlns="http://www.w3.org/2000/svg">
+        <svg className="statemap__svg" viewBox="0 0 580 360" xmlns="http://www.w3.org/2000/svg">
           <ArrowDef />
           {lockoutEdges.map((e) => (
             <EdgeLine
@@ -45,60 +88,45 @@ export default function StateMapLockout({
               inputs={e.inputs}
             />
           ))}
-          {Object.keys(LOCKOUT_POSITIONS)
-            .filter((stateId) => isAdvanced || stateId !== "AUTO_LOCK_CONFIG")
+
+          {LOCKOUT_ACTION_NODES.map((node) => (
+            <EdgeLine
+              key={`LOCKOUT-${node.id}`}
+              from={LOCKOUT_POSITIONS.LOCKOUT}
+              to={LOCKOUT_POSITIONS[node.id]}
+              inputs={[node.action]}
+            />
+          ))}
+
+          {LOCKOUT_ACTION_NODES.map((node) => (
+            <ActionNode
+              key={node.id}
+              pos={LOCKOUT_POSITIONS[node.id]}
+              label={node.label}
+              isReachable={currentState === "LOCKOUT"}
+              onClick={() => onInput?.(node.action)}
+            />
+          ))}
+
+          {LOCKOUT_STATE_NODES
+            .filter((stateId) => isAdvanced || !["AUTO_LOCK_CONFIG", "LOCKOUT_AUX_PATTERN_CONFIG", "LOCKOUT_AUX_COLOR_CONFIG"].includes(stateId))
             .map((stateId) => {
               const pos  = LOCKOUT_POSITIONS[stateId];
               const info = getStateInfo(stateId);
+              const clickAction =
+                stateId === "LOCKOUT_AUX_PATTERN_CONFIG" ? "7C" :
+                stateId === "LOCKOUT_AUX_COLOR_CONFIG" ? "7H" :
+                null;
               return (
                 <StateNode
                   key={stateId}
                   pos={pos} info={info}
                   isCurrent={stateId === currentState}
                   isReachable={reachableFromCurrent.has(stateId)}
-                  onClick={() => onGoToState(stateId)}
+                  onClick={() => clickAction ? onInput?.(clickAction) : onGoToState(stateId)}
                 />
               );
             })}
-
-          {/* ── Self-transition annotations (below the LOCKOUT node) ── */}
-          <text
-            x={annotX} y={annotY}
-            textAnchor="middle" className="statemap__ramp-action"
-            style={{ fontSize: "9px", opacity: 0.5 }}
-          >
-            — while locked —
-          </text>
-
-          {/* 1H and 2H: both UI modes */}
-          <text x={annotX} y={annotY + 17} textAnchor="middle" className="statemap__ramp-action">
-            1H · Momentary Low
-          </text>
-          <text x={annotX} y={annotY + 32} textAnchor="middle" className="statemap__ramp-action">
-            2H · Momentary Moon
-          </text>
-
-          {/* 7C and 7H: Advanced UI only — clickable to cycle aux */}
-          {isAdvanced && (
-            <>
-              <text
-                x={annotX} y={annotY + 52}
-                textAnchor="middle" className="statemap__ramp-action"
-                style={clickStyle}
-                onClick={() => onInput?.("7C")}
-              >
-                7C · Aux Pattern ↺
-              </text>
-              <text
-                x={annotX} y={annotY + 67}
-                textAnchor="middle" className="statemap__ramp-action"
-                style={clickStyle}
-                onClick={() => onInput?.("7H")}
-              >
-                7H · Aux Color ↺
-              </text>
-            </>
-          )}
         </svg>
       </div>
       <div className="statemap__legend">

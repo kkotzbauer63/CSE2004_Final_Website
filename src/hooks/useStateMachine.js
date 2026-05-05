@@ -5,8 +5,7 @@ import {
   getAvailableTransitions,
   getStateInfo,
 } from "../stateMachine/engine.js";
-import { nodeMap } from "../data/graph.js";
-import { NODE_TYPE, TRANSITION_KIND } from "../data/constants.js";
+import { TRANSITION_KIND } from "../data/constants.js";
 import {
   TURBO_STYLE,
   DEFAULT_ADVANCED_CONFIG,
@@ -54,6 +53,7 @@ export function levelToPercent(level) {
 
 // States where auxOff settings should be displayed (same as off mode)
 const AUX_OFF_STATES = new Set(["OFF", "AUX_PATTERN_CONFIG", "AUX_COLOR_CONFIG"]);
+const AUX_LOCKOUT_STATES = new Set(["LOCKOUT", "LOCKOUT_AUX_PATTERN_CONFIG", "LOCKOUT_AUX_COLOR_CONFIG"]);
 
 // States where brightness should be preserved on navigation
 const RAMP_LIKE_STATES = new Set(["RAMP", "SUNSET_TIMER"]);
@@ -67,6 +67,13 @@ function resolveHint(hint, cfg) {
     case "turbo":   return cfg.turboLevel;
     default:        return 75;
   }
+}
+
+function closestStepLevel(level, cfg) {
+  const steps = computeStepLevels(cfg.floorLevel, cfg.ceilLevel, cfg.stepCount);
+  return steps.reduce((closest, step) => (
+    Math.abs(step - level) < Math.abs(closest - level) ? step : closest
+  ), steps[0] ?? cfg.floorLevel);
 }
 
 export function useStateMachine(initialState = "OFF") {
@@ -180,12 +187,19 @@ export function useStateMachine(initialState = "OFF") {
 
         // Toggle ramp style (smooth ↔ stepped)
         if (result.transition?.toggleEffect === "rampStyle") {
-          setRampStyle((prev) => (prev === "smooth" ? "stepped" : "smooth"));
+          if (rampStyleRef.current === "smooth") {
+            setLevel((cur) => cur > 0 ? closestStepLevel(cur, rampBoundsRef.current) : cur);
+            setRampStyle("stepped");
+          } else {
+            setRampStyle("smooth");
+          }
         }
 
         // Aux LED cycling — affects the mode we were IN, not the target
         if (result.transition?.auxEffect) {
-          const setter = currentState === "LOCKOUT" ? setAuxLockout : setAuxOff;
+          const setter = result.transition.auxContext === "lockout" || AUX_LOCKOUT_STATES.has(currentState)
+            ? setAuxLockout
+            : setAuxOff;
           if (result.transition.auxEffect === "nextPattern") {
             setter((prev) => ({ ...prev, pattern: (prev.pattern + 1) % AUX_PATTERNS.length }));
           } else if (result.transition.auxEffect === "nextColor") {
@@ -423,8 +437,9 @@ export function useStateMachine(initialState = "OFF") {
   // Resolved aux LED display
   const auxDisplay = useMemo(() => {
     const isOffLike = AUX_OFF_STATES.has(currentState);
-    if (!isOffLike && currentState !== "LOCKOUT") return null;
-    const settings    = currentState === "LOCKOUT" ? auxLockout : auxOff;
+    const isLockoutLike = AUX_LOCKOUT_STATES.has(currentState);
+    if (!isOffLike && !isLockoutLike) return null;
+    const settings    = isLockoutLike ? auxLockout : auxOff;
     const patternName = AUX_PATTERNS[settings.pattern];
     if (patternName === "off") return { color: null, colorName: null, pattern: "off" };
     const colorName   = AUX_COLORS[settings.color];
@@ -454,6 +469,8 @@ export function useStateMachine(initialState = "OFF") {
     auxDisplay,
     auxPatternIndex: auxOff.pattern,
     auxColorIndex:   auxOff.color,
+    lockoutAuxPatternIndex: auxLockout.pattern,
+    lockoutAuxColorIndex:   auxLockout.color,
     // Per-UI config state + updaters
     advancedConfig,
     simpleConfig,

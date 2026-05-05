@@ -18,13 +18,17 @@ const PATTERN_DESCRIPTIONS = {
 
 // ── Aux Pattern Config ────────────────────────────────────────────────────────
 
-export function StateMapAuxPattern({ auxPatternIndex, onGoToState, onInput }) {
+export function StateMapAuxPattern({ auxPatternIndex, context = "off", onGoToState, onInput }) {
   const currentPattern = AUX_PATTERNS[auxPatternIndex] ?? "off";
+  const isLockout = context === "lockout";
+  const returnState = isLockout ? "LOCKOUT" : "OFF";
+  const title = isLockout ? "Aux LED Pattern — Lockout Mode" : "Aux LED Pattern — Off Mode";
+  const returnLabel = isLockout ? "Lockout" : "Off";
 
   return (
     <div className="statemap">
       <div className="statemap__header">
-        <h3 className="statemap__title">Aux LED Pattern — Off Mode</h3>
+        <h3 className="statemap__title">{title}</h3>
         <span className="statemap__mode">Advanced UI</span>
       </div>
       <div className="statemap__container">
@@ -33,12 +37,12 @@ export function StateMapAuxPattern({ auxPatternIndex, onGoToState, onInput }) {
           <g
             role="button"
             style={{ cursor: "pointer" }}
-            onClick={() => onGoToState("OFF")}
+            onClick={() => onGoToState(returnState)}
           >
             <rect x="205" y="8" width="110" height="36" rx="2"
               fill="#1c1c1e" stroke="#D4A84B" strokeWidth="1.5" />
             <text x="260" y="31" textAnchor="middle" dominantBaseline="middle"
-              className="statemap__node-label" fill="#D4A84B">Off</text>
+              className="statemap__node-label" fill="#D4A84B">{returnLabel}</text>
           </g>
           <text x="260" y="56" textAnchor="middle" className="statemap__edge-label">← 1C</text>
 
@@ -119,16 +123,17 @@ export function StateMapAuxPattern({ auxPatternIndex, onGoToState, onInput }) {
 
 // ── Aux Color Config ──────────────────────────────────────────────────────────
 
-const DISCO_CYCLE_DESC = "Cycles red→yellow→green→cyan→blue→magenta every 0.25 s";
-const RAINBOW_CYCLE_DESC = "Cycles red→yellow→green→cyan→blue→magenta every 1 s";
-
-export function StateMapAuxColor({ auxColorIndex, onGoToState, onInput }) {
+export function StateMapAuxColor({ auxColorIndex, context = "off", onGoToState, onInput }) {
   const currentColor = AUX_COLORS[auxColorIndex] ?? "red";
+  const isLockout = context === "lockout";
+  const returnState = isLockout ? "LOCKOUT" : "OFF";
+  const title = isLockout ? "Aux LED Color — Lockout Mode" : "Aux LED Color — Off Mode";
+  const returnLabel = isLockout ? "Lockout" : "Off";
 
   return (
     <div className="statemap">
       <div className="statemap__header">
-        <h3 className="statemap__title">Aux LED Color — Off Mode</h3>
+        <h3 className="statemap__title">{title}</h3>
         <span className="statemap__mode">Advanced UI</span>
       </div>
       <div className="statemap__container">
@@ -137,12 +142,12 @@ export function StateMapAuxColor({ auxColorIndex, onGoToState, onInput }) {
           <g
             role="button"
             style={{ cursor: "pointer" }}
-            onClick={() => onGoToState("OFF")}
+            onClick={() => onGoToState(returnState)}
           >
             <rect x="255" y="8" width="110" height="36" rx="2"
               fill="#1c1c1e" stroke="#D4A84B" strokeWidth="1.5" />
             <text x="310" y="31" textAnchor="middle" dominantBaseline="middle"
-              className="statemap__node-label" fill="#D4A84B">Off</text>
+              className="statemap__node-label" fill="#D4A84B">{returnLabel}</text>
           </g>
           <text x="310" y="57" textAnchor="middle" className="statemap__edge-label">← 1C</text>
 

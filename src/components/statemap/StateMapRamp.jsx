@@ -16,7 +16,7 @@ function rampLevelY(lv) {
 
 export default function StateMapRamp({
   isAdvanced, currentState, level, rampStyle, rampConfig,
-  reachableFromCurrent, onGoToState, uiMode,
+  reachableFromCurrent, onGoToState, uiMode, onInput,
 }) {
   // Resolve config values — fall back to Advanced defaults if not yet provided
   const cfg = rampConfig ?? DEFAULT_ADVANCED_CONFIG;
@@ -158,6 +158,37 @@ export default function StateMapRamp({
           >
             3C {rampStyle === "stepped" ? "→ smooth" : "→ stepped"}
           </text>
+          {isAdvanced && (
+            <g
+              role="button"
+              onClick={() => onInput?.("10C")}
+              style={{ cursor: "pointer" }}
+            >
+              <rect
+                x={RAMP_X + 8} y={RAMP_Y + 198} width={RAMP_W - 16} height="28" rx="2"
+                fill="rgba(28, 28, 30, 0.72)"
+                stroke="#D4A84B"
+                strokeWidth="1"
+                strokeOpacity="0.45"
+              />
+              <text
+                x={RAMP_X + RAMP_W / 2} y={RAMP_Y + 208}
+                textAnchor="middle" dominantBaseline="middle"
+                className="statemap__ramp-action"
+                style={{ fontSize: "8px", pointerEvents: "none" }}
+              >
+                10C
+              </text>
+              <text
+                x={RAMP_X + RAMP_W / 2} y={RAMP_Y + 220}
+                textAnchor="middle" dominantBaseline="middle"
+                className="statemap__ramp-action"
+                style={{ fontSize: "7px", pointerEvents: "none" }}
+              >
+                Save memory
+              </text>
+            </g>
+          )}
 
           {/* Current level indicator */}
           {levelY !== null && (

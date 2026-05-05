@@ -16,7 +16,7 @@ import { createButtonHandler } from '../stateMachine/buttonHandler.js';
  *   pendingInput: { clickCount: number, isDown: boolean, holdDetected: boolean }
  * }}
  */
-export function useButtonInput({ handleInput, startRamp, stopRamp }) {
+export function useButtonInput({ handleInput, startRamp, stopRamp, stopMomentary }) {
   const [isButtonPressed, setIsButtonPressed] = useState(false);
   const [pendingInput, setPendingInput] = useState({
     clickCount: 0,
@@ -31,6 +31,8 @@ export function useButtonInput({ handleInput, startRamp, stopRamp }) {
   startRampRef.current = startRamp;
   const stopRampRef = useRef(stopRamp);
   stopRampRef.current = stopRamp;
+  const stopMomentaryRef = useRef(stopMomentary);
+  stopMomentaryRef.current = stopMomentary;
 
   // Create the handler exactly once for the lifetime of this hook instance
   const handler = useRef(null);
@@ -45,6 +47,7 @@ export function useButtonInput({ handleInput, startRamp, stopRamp }) {
       },
       onHoldEnd: () => {
         stopRampRef.current();
+        stopMomentaryRef.current?.();
       },
       onPendingUpdate: (pending) => {
         setPendingInput(pending);

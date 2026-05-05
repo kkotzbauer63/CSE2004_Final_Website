@@ -54,7 +54,7 @@ export const RAMP_EXTRAS_CONFIG = {
     { position: 1, name: "Disable manual memory",     default: 0, valueScheme: "any value = disable (revert to auto mem)" },
     { position: 2, name: "Manual memory timer",       default: 0, valueScheme: "clicks = minutes (0 = pure manual memory)" },
     { position: 3, name: "Ramp-after-moon style",     default: 0, valueScheme: "0 = ramp up, 1 = stay at floor" },
-    { position: 4, name: "Turbo style",               default: 2, valueScheme: "0 = no turbo, 1 = A1 style, 2 = A2 style" },
+    { position: 4, name: "Turbo style",               default: 2, valueScheme: "0=no turbo (2C→CEIL; TURBO line hidden), 1=A1 always-turbo (2C from OFF or ramp always→TURBO), 2=A2 default (2C→CEIL; 2C again at CEIL→TURBO)" },
     { position: 5, name: "Smooth steps",              default: 1, valueScheme: "0 = off, 1 = on" },
   ],
   transitions: [

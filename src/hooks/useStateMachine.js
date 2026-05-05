@@ -6,7 +6,13 @@ import {
   getStateInfo,
 } from "../stateMachine/engine.js";
 import { nodeMap } from "../data/graph.js";
-import { NODE_TYPE } from "../data/constants.js";
+import { NODE_TYPE, TRANSITION_KIND } from "../data/constants.js";
+import {
+  TURBO_STYLE,
+  DEFAULT_ADVANCED_CONFIG,
+  DEFAULT_SIMPLE_CONFIG,
+  computeStepLevels,
+} from "../data/flashlightConfig.js";
 
 // Aux LED patterns (cycle order matches Anduril firmware)
 export const AUX_PATTERNS = ["off", "low", "high", "blinking"];
@@ -36,7 +42,8 @@ export const DISCO_CYCLE_HEX = ["#ff3333", "#ffaa00", "#33ff33", "#00dddd", "#33
 // Anduril brightness: levels 1–150
 const MAX_LEVEL = 150;
 const MIN_LEVEL = 1;
-const RAMP_INTERVAL_MS = 17; // ~60fps, 1 level per tick ≈ 2.5s full ramp
+const RAMP_INTERVAL_MS    = 17;  // ~60fps smooth ramp
+const STEPPED_INTERVAL_MS = 500; // 0.5s between steps in stepped mode
 
 // Convert Anduril level (1–150) to a 0–100 percentage for the visual
 export function levelToPercent(level) {
@@ -49,6 +56,17 @@ const AUX_OFF_STATES = new Set(["OFF", "AUX_PATTERN_CONFIG", "AUX_COLOR_CONFIG"]
 // States where brightness should be preserved on navigation
 const RAMP_LIKE_STATES = new Set(["RAMP", "SUNSET_TIMER"]);
 
+/** Resolve a brightnessHint string to an Anduril level using the active config. */
+function resolveHint(hint, cfg) {
+  switch (hint) {
+    case "moon":    return MIN_LEVEL;
+    case "floor":   return cfg.floorLevel;
+    case "ceiling": return cfg.ceilLevel;
+    case "turbo":   return cfg.turboLevel;
+    default:        return 75;
+  }
+}
+
 export function useStateMachine(initialState = "OFF") {
   const [currentState, setCurrentState] = useState(initialState);
   const [uiMode, setUiMode] = useState("simple"); // "simple" | "full"
@@ -56,41 +74,57 @@ export function useStateMachine(initialState = "OFF") {
   const [history, setHistory] = useState([]);
   const [level, setLevel] = useState(0); // 0 = off, 1-150 = on
   const [rampStyle, setRampStyle] = useState("smooth"); // "smooth" | "stepped"
-  const rampTimer = useRef(null);
+
+  // ── Per-UI config state ────────────────────────────────────────────────────
+  const [advancedConfig, setAdvancedConfig] = useState(() => ({ ...DEFAULT_ADVANCED_CONFIG }));
+  const [simpleConfig,   setSimpleConfig]   = useState(() => ({ ...DEFAULT_SIMPLE_CONFIG }));
+
+  // ── Refs for fresh access inside timers / stable callbacks ────────────────
+  const levelRef      = useRef(0);
+  const rampStyleRef  = useRef("smooth");
+  const rampTimer     = useRef(null);
   const rampDirection = useRef(null); // "up" | "down"
+
+  // Active config ref — updated every render so intervals always read fresh values
+  const rampBoundsRef = useRef({ ...DEFAULT_SIMPLE_CONFIG });
+
+  // Momentary-state tracking: when a momentary transition fires, store the return point
+  const momentaryReturnRef = useRef(null); // { state: string, level: number } | null
 
   // Track last-used strobe child so STROBE_GROUP resolves correctly on re-entry
   const lastUsedStrobe = useRef(null);
 
-  // Aux LED state — off mode and lockout mode are configured independently.
+  // ── Keep refs in sync with state (updated in render body, not effects) ────
+  levelRef.current     = level;
+  rampStyleRef.current = rampStyle;
+  const _activeCfg     = uiMode === "full" ? advancedConfig : simpleConfig;
+  rampBoundsRef.current = _activeCfg;
+
+  // ── Aux LED state ──────────────────────────────────────────────────────────
   const [auxOff,     setAuxOff]     = useState({ pattern: 2, color: 9 }); // high, voltage
   const [auxLockout, setAuxLockout] = useState({ pattern: 1, color: 0 }); // low,  red
 
-  // Brightness hints mapped to Anduril levels
-  const LEVEL_HINTS = {
-    moon:    1,
-    floor:   1,
-    ceiling: 120,
-    turbo:   150,
-  };
+  // ── Config update helpers ──────────────────────────────────────────────────
+  const updateAdvancedConfig = useCallback((updates) => {
+    setAdvancedConfig((prev) => ({ ...prev, ...updates }));
+  }, []);
 
-  // Strobe state IDs — track last-used for STROBE_GROUP entry resolution
-  const STROBE_IDS = new Set([
-    "PARTY_STROBE", "TACTICAL_STROBE", "POLICE_STROBE",
-    "LIGHTNING", "CANDLE", "BIKE_FLASHER",
-  ]);
+  const updateSimpleConfig = useCallback((updates) => {
+    setSimpleConfig((prev) => ({ ...prev, ...updates }));
+  }, []);
 
-  // Perform factory reset side-effects when entering FACTORY_RESET state.
-  // The state itself (type STATE) does not auto-return — user must press 1C.
+  // ── Factory reset side-effects ────────────────────────────────────────────
   useEffect(() => {
     if (currentState !== "FACTORY_RESET") return;
     setUiMode("simple");
     setRampStyle("smooth");
     setAuxOff({ pattern: 2, color: 9 });
     setAuxLockout({ pattern: 1, color: 0 });
-    // Level is already 0 since FACTORY_RESET.brightness === 0
+    setAdvancedConfig({ ...DEFAULT_ADVANCED_CONFIG });
+    setSimpleConfig({ ...DEFAULT_SIMPLE_CONFIG });
   }, [currentState]);
 
+  // ── Main input handler ────────────────────────────────────────────────────
   const handleInput = useCallback(
     (input) => {
       const result = processInput(currentState, input, uiMode, lastUsedStrobe.current);
@@ -108,7 +142,27 @@ export function useStateMachine(initialState = "OFF") {
         setCurrentState(result.state);
         setLastAction(result.action);
 
+        // Clear momentary return on any explicit navigation away
+        if (
+          result.transition?.kind === TRANSITION_KIND.NAVIGATE &&
+          !result.transition?.momentary
+        ) {
+          momentaryReturnRef.current = null;
+        }
+
+        // Track momentary transitions so stopMomentary can restore state+level
+        if (result.transition?.momentary) {
+          momentaryReturnRef.current = {
+            state: currentState,
+            level: levelRef.current,
+          };
+        }
+
         // Track last-used strobe state for re-entry
+        const STROBE_IDS = new Set([
+          "PARTY_STROBE", "TACTICAL_STROBE", "POLICE_STROBE",
+          "LIGHTNING", "CANDLE", "BIKE_FLASHER",
+        ]);
         if (STROBE_IDS.has(result.state)) {
           lastUsedStrobe.current = result.state;
         }
@@ -123,8 +177,7 @@ export function useStateMachine(initialState = "OFF") {
           setRampStyle((prev) => (prev === "smooth" ? "stepped" : "smooth"));
         }
 
-        // Aux LED pattern/color cycling — affects the mode we were IN, not the target.
-        // Also works when already in the AUX_PATTERN_CONFIG / AUX_COLOR_CONFIG states.
+        // Aux LED cycling — affects the mode we were IN, not the target
         if (result.transition?.auxEffect) {
           const setter = currentState === "LOCKOUT" ? setAuxLockout : setAuxOff;
           if (result.transition.auxEffect === "nextPattern") {
@@ -134,23 +187,48 @@ export function useStateMachine(initialState = "OFF") {
           }
         }
 
-        // Update brightness level based on transition metadata
-        const targetInfo = getStateInfo(result.state);
+        // ── Brightness level update ──────────────────────────────────────
+        const cfg         = rampBoundsRef.current;
+        const targetInfo  = getStateInfo(result.state);
+
         if (result.transition?.rampEffect) {
-          // Single-press ramp: nudge by 10 levels
-          setLevel((prev) => {
-            const cur = prev || 75;
-            return result.transition.rampEffect === "up"
-              ? Math.min(cur + 10, MAX_LEVEL)
-              : Math.max(cur - 10, MIN_LEVEL);
-          });
+          // Stepped mode: skip nudge — startRamp will jump to the first step immediately
+          if (rampStyleRef.current !== "stepped") {
+            setLevel((prev) => {
+              const cur = prev || 75;
+              return result.transition.rampEffect === "up"
+                ? Math.min(cur + 10, cfg.ceilLevel)
+                : Math.max(cur - 10, cfg.floorLevel);
+            });
+          }
         } else if (result.transition?.brightnessHint) {
-          setLevel(LEVEL_HINTS[result.transition.brightnessHint] ?? 75);
+          let targetLevel = resolveHint(result.transition.brightnessHint, cfg);
+
+          // Turbo-style overrides for specific inputs
+          if (input === "2C" && currentState === "RAMP") {
+            // A2 (default): at ceil → turbo; A1: always turbo; NONE: always ceil
+            if (cfg.turboStyle === TURBO_STYLE.A1) {
+              targetLevel = cfg.turboLevel;
+            } else if (cfg.turboStyle === TURBO_STYLE.A2 && levelRef.current >= cfg.ceilLevel) {
+              targetLevel = cfg.turboLevel;
+            } else {
+              targetLevel = cfg.ceilLevel;
+            }
+          } else if (input === "2C" && currentState === "OFF") {
+            // A1: OFF → 2C jumps to turbo; others: go to ceil
+            targetLevel = cfg.turboStyle === TURBO_STYLE.A1 ? cfg.turboLevel : cfg.ceilLevel;
+          } else if (input === "2H" && currentState === "OFF" && uiMode === "full") {
+            // Full UI momentary: turbo normally; no-turbo style → ceil instead
+            if (cfg.turboStyle === TURBO_STYLE.NONE) {
+              targetLevel = cfg.ceilLevel;
+            }
+          }
+
+          setLevel(targetLevel);
         } else if (targetInfo?.brightness === 0) {
           setLevel(0);
         } else {
           setLevel((prev) => {
-            // Preserve brightness when staying in ramp-like states
             if (RAMP_LIKE_STATES.has(result.state) && prev > 0) return prev;
             return Math.round((targetInfo.brightness / 100) * MAX_LEVEL) || 1;
           });
@@ -159,8 +237,10 @@ export function useStateMachine(initialState = "OFF") {
         // Bump sunset timer to ≥3 min when brightness changes while active
         if (currentState === "SUNSET_TIMER") {
           const ss = sunsetRef.current;
-          if (ss.remaining > 0 && ss.remaining < 180 &&
-              (result.transition?.rampEffect || result.transition?.brightnessHint)) {
+          if (
+            ss.remaining > 0 && ss.remaining < 180 &&
+            (result.transition?.rampEffect || result.transition?.brightnessHint)
+          ) {
             ss.remaining = 180;
             setSunsetSeconds(180);
           }
@@ -171,21 +251,7 @@ export function useStateMachine(initialState = "OFF") {
     [currentState, uiMode]
   );
 
-  // Start continuous ramping (called on hold-start)
-  const startRamp = useCallback((direction) => {
-    stopRamp();
-    rampDirection.current = direction;
-    rampTimer.current = setInterval(() => {
-      setLevel((prev) => {
-        const cur = prev || 75;
-        return direction === "up"
-          ? Math.min(cur + 1, MAX_LEVEL)
-          : Math.max(cur - 1, MIN_LEVEL);
-      });
-    }, RAMP_INTERVAL_MS);
-  }, []);
-
-  // Stop continuous ramping (called on hold-end)
+  // ── Continuous ramping ─────────────────────────────────────────────────────
   const stopRamp = useCallback(() => {
     if (rampTimer.current) {
       clearInterval(rampTimer.current);
@@ -194,12 +260,56 @@ export function useStateMachine(initialState = "OFF") {
     rampDirection.current = null;
   }, []);
 
-  // ── Sunset timer ─────────────────────────────────────────────────────────
-  // Internally tracked in seconds (floats). 5 min = 300 s.
-  // Tick interval: 500 ms → -0.5 s per tick (normal) or -5 s per tick (10× speed).
+  const startRamp = useCallback((direction) => {
+    stopRamp();
+    rampDirection.current = direction;
+
+    if (rampStyleRef.current === "stepped") {
+      // Stepped mode: jump to the next step, then repeat every 500ms
+      const doStep = () => {
+        setLevel((prev) => {
+          const cfg   = rampBoundsRef.current;
+          const steps = computeStepLevels(cfg.floorLevel, cfg.ceilLevel, cfg.stepCount);
+          const cur   = prev || cfg.floorLevel;
+          if (direction === "up") {
+            const next = steps.find((s) => s > cur);
+            return next !== undefined ? next : cfg.ceilLevel;
+          } else {
+            const next = [...steps].reverse().find((s) => s < cur);
+            return next !== undefined ? next : cfg.floorLevel;
+          }
+        });
+      };
+      doStep(); // Immediate first step
+      rampTimer.current = setInterval(doStep, STEPPED_INTERVAL_MS);
+    } else {
+      // Smooth mode: increment by 1 every ~17ms, clamped to floor/ceil
+      rampTimer.current = setInterval(() => {
+        setLevel((prev) => {
+          const cur = prev || 75;
+          const cfg = rampBoundsRef.current;
+          return direction === "up"
+            ? Math.min(cur + 1, cfg.ceilLevel)
+            : Math.max(cur - 1, cfg.floorLevel);
+        });
+      }, RAMP_INTERVAL_MS);
+    }
+  }, [stopRamp]);
+
+  // ── Momentary-state return ─────────────────────────────────────────────────
+  // Called by useButtonInput on hold-end, restoring state+level for momentary transitions.
+  const stopMomentary = useCallback(() => {
+    if (!momentaryReturnRef.current) return;
+    const { state: retState, level: retLevel } = momentaryReturnRef.current;
+    momentaryReturnRef.current = null;
+    setCurrentState(retState);
+    setLevel(retLevel);
+  }, []);
+
+  // ── Sunset timer ───────────────────────────────────────────────────────────
   const [sunsetSeconds, setSunsetSeconds] = useState(0);
   const sunsetRef      = useRef({ remaining: 0, total: 0, startLevel: 75, intervalId: null });
-  const sunsetSpeedRef = useRef(1); // 1 = real-time, 10 = 10× fast
+  const sunsetSpeedRef = useRef(1);
   const [sunsetSpeedMultiplier, setSunsetSpeedMultiplier] = useState(1);
 
   const toggleSunsetSpeed = useCallback(() => {
@@ -211,7 +321,7 @@ export function useStateMachine(initialState = "OFF") {
   const addSunsetMinutes = useCallback((minutes, capturedLevel) => {
     const ss = sunsetRef.current;
     const wasInactive = ss.remaining === 0;
-    ss.remaining += minutes * 60;               // convert minutes → seconds
+    ss.remaining += minutes * 60;
     ss.total = Math.max(ss.total, ss.remaining);
     if (wasInactive) ss.startLevel = capturedLevel;
     setSunsetSeconds(Math.ceil(ss.remaining));
@@ -234,7 +344,6 @@ export function useStateMachine(initialState = "OFF") {
     }
   }, []);
 
-  // Clear timer whenever we leave SUNSET_TIMER
   useEffect(() => {
     if (currentState === "SUNSET_TIMER") return;
     const ss = sunsetRef.current;
@@ -244,6 +353,7 @@ export function useStateMachine(initialState = "OFF") {
     setSunsetSeconds(0);
   }, [currentState]);
 
+  // ── Jump to state (state-map clicks) ──────────────────────────────────────
   const goToState = useCallback(
     (nodeId) => {
       const info = getStateInfo(nodeId);
@@ -261,6 +371,10 @@ export function useStateMachine(initialState = "OFF") {
             timestamp: Date.now(),
           },
         ]);
+        const STROBE_IDS = new Set([
+          "PARTY_STROBE", "TACTICAL_STROBE", "POLICE_STROBE",
+          "LIGHTNING", "CANDLE", "BIKE_FLASHER",
+        ]);
         if (STROBE_IDS.has(nodeId)) {
           lastUsedStrobe.current = nodeId;
         }
@@ -270,10 +384,10 @@ export function useStateMachine(initialState = "OFF") {
   );
 
   const availableTransitions = getAvailableTransitions(currentState, uiMode);
-  const stateInfo = getStateInfo(currentState);
-  const brightness = level === 0 ? 0 : levelToPercent(level);
+  const stateInfo            = getStateInfo(currentState);
+  const brightness           = level === 0 ? 0 : levelToPercent(level);
 
-  // Resolved aux LED display — active in off-like states and lockout
+  // Resolved aux LED display
   const auxDisplay = useMemo(() => {
     const isOffLike = AUX_OFF_STATES.has(currentState);
     if (!isOffLike && currentState !== "LOCKOUT") return null;
@@ -301,12 +415,17 @@ export function useStateMachine(initialState = "OFF") {
     handleInput,
     startRamp,
     stopRamp,
+    stopMomentary,
     goToState,
     history,
     auxDisplay,
-    // Aux settings exposed for state map expanded views
     auxPatternIndex: auxOff.pattern,
     auxColorIndex:   auxOff.color,
+    // Per-UI config state + updaters
+    advancedConfig,
+    simpleConfig,
+    updateAdvancedConfig,
+    updateSimpleConfig,
     // Sunset timer
     sunsetSeconds,
     addSunsetMinutes,

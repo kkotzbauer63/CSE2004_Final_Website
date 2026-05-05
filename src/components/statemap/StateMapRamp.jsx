@@ -6,21 +6,34 @@ import {
   RAMP_EXPANDED_POSITIONS, NODE_W, NODE_H,
 } from "./statemapLayouts.js";
 import { StateNode } from "./StateMapPrimitives.jsx";
+import { TURBO_STYLE, DEFAULT_ADVANCED_CONFIG } from "../../data/flashlightConfig.js";
 
-const NUM_STEPS = 7; // default Anduril stepped ramp count
-
+/** Convert Anduril level (1–150) to SVG Y coordinate within the ramp rectangle. */
 function rampLevelY(lv) {
   const clamped = Math.max(1, Math.min(150, lv));
   return RAMP_Y + RAMP_H * (1 - (clamped - 1) / 149);
 }
 
 export default function StateMapRamp({
-  isAdvanced, currentState, level, rampStyle,
+  isAdvanced, currentState, level, rampStyle, rampConfig,
   reachableFromCurrent, onGoToState, uiMode,
 }) {
-  const turboLineY = RAMP_Y + 40;
-  const ceilLineY  = RAMP_Y + 80;
-  const floorLineY = RAMP_Y + 240;
+  // Resolve config values — fall back to Advanced defaults if not yet provided
+  const cfg = rampConfig ?? DEFAULT_ADVANCED_CONFIG;
+  const {
+    floorLevel = 1,
+    ceilLevel  = 120,
+    turboLevel = 150,
+    turboStyle = TURBO_STYLE.A2,
+    stepCount  = 7,
+  } = cfg;
+
+  const showTurbo  = turboStyle !== TURBO_STYLE.NONE;
+
+  // Y positions derived from actual config levels
+  const turboLineY = rampLevelY(turboLevel);
+  const ceilLineY  = rampLevelY(ceilLevel);
+  const floorLineY = rampLevelY(floorLevel);
   const levelY     = level > 0 ? rampLevelY(level) : null;
 
   // Which state to pull transitions from
@@ -39,10 +52,13 @@ export default function StateMapRamp({
     ? ["SUNSET_TIMER", "MOMENTARY_MODE", "RAMP_CONFIG", "RAMP_EXTRAS_CONFIG"]
     : [];
 
-  // Stepped tick Y positions — evenly spaced from floor to ceiling (inclusive)
+  // Stepped tick Y positions — evenly spaced from floor to ceil (inclusive)
+  const safeStepCount = Math.max(1, stepCount);
   const steppedTicks = rampStyle === "stepped"
-    ? Array.from({ length: NUM_STEPS }, (_, i) =>
-        floorLineY + (ceilLineY - floorLineY) * (i / (NUM_STEPS - 1))
+    ? Array.from({ length: safeStepCount }, (_, i) =>
+        safeStepCount <= 1
+          ? floorLineY
+          : floorLineY + (ceilLineY - floorLineY) * (i / (safeStepCount - 1))
       )
     : [];
 
@@ -89,14 +105,23 @@ export default function StateMapRamp({
             {rampLabel}
           </text>
 
-          {/* Zone dashed lines */}
-          <line x1={RAMP_X} y1={turboLineY} x2={RAMP_X + RAMP_W} y2={turboLineY}
-            stroke="#D4A84B" strokeWidth="1" strokeOpacity="0.45" strokeDasharray="3 3"
-          />
-          <line x1={RAMP_X} y1={ceilLineY} x2={RAMP_X + RAMP_W} y2={ceilLineY}
+          {/* TURBO line — hidden when turboStyle === NONE */}
+          {showTurbo && (
+            <line
+              x1={RAMP_X} y1={turboLineY} x2={RAMP_X + RAMP_W} y2={turboLineY}
+              stroke="#D4A84B" strokeWidth="1" strokeOpacity="0.45" strokeDasharray="3 3"
+            />
+          )}
+
+          {/* CEIL line */}
+          <line
+            x1={RAMP_X} y1={ceilLineY} x2={RAMP_X + RAMP_W} y2={ceilLineY}
             stroke="#D4A84B" strokeWidth="1" strokeOpacity="0.30" strokeDasharray="3 3"
           />
-          <line x1={RAMP_X} y1={floorLineY} x2={RAMP_X + RAMP_W} y2={floorLineY}
+
+          {/* FLOOR line */}
+          <line
+            x1={RAMP_X} y1={floorLineY} x2={RAMP_X + RAMP_W} y2={floorLineY}
             stroke="#D4A84B" strokeWidth="1" strokeOpacity="0.20" strokeDasharray="3 3"
           />
 
@@ -110,20 +135,29 @@ export default function StateMapRamp({
             />
           ))}
 
-          {/* Zone labels — right of ramp rect */}
-          <text x={RAMP_X + RAMP_W + 6} y={turboLineY + 4} className="statemap__ramp-marker">TURBO</text>
-          <text x={RAMP_X + RAMP_W + 6} y={ceilLineY  + 4} className="statemap__ramp-marker">CEIL</text>
-          <text x={RAMP_X + RAMP_W + 6} y={floorLineY + 4} className="statemap__ramp-marker">FLOOR</text>
+          {/* Zone labels — right of ramp rect, with actual level numbers */}
+          {showTurbo && (
+            <text x={RAMP_X + RAMP_W + 6} y={turboLineY + 4} className="statemap__ramp-marker">
+              TURBO {turboLevel}
+            </text>
+          )}
+          <text x={RAMP_X + RAMP_W + 6} y={ceilLineY  + 4} className="statemap__ramp-marker">
+            CEIL {ceilLevel}
+          </text>
+          <text x={RAMP_X + RAMP_W + 6} y={floorLineY + 4} className="statemap__ramp-marker">
+            FLOOR {floorLevel}
+          </text>
 
           {/* Self-transition annotations inside ramp rect */}
           <text x={RAMP_X + RAMP_W / 2} y={RAMP_Y + 135} textAnchor="middle" className="statemap__ramp-action">1H ↑</text>
           <text x={RAMP_X + RAMP_W / 2} y={RAMP_Y + 155} textAnchor="middle" className="statemap__ramp-action">2H ↓</text>
-          {isAdvanced && (
-            <text x={RAMP_X + RAMP_W / 2} y={RAMP_Y + 178} textAnchor="middle" className="statemap__ramp-action"
-              style={{ fontSize: "8px", opacity: 0.65 }}>
-              6C {rampStyle === "stepped" ? "→ smooth" : "→ stepped"}
-            </text>
-          )}
+          <text
+            x={RAMP_X + RAMP_W / 2} y={RAMP_Y + 178} textAnchor="middle"
+            className="statemap__ramp-action"
+            style={{ fontSize: "8px", opacity: 0.65 }}
+          >
+            3C {rampStyle === "stepped" ? "→ smooth" : "→ stepped"}
+          </text>
 
           {/* Current level indicator */}
           {levelY !== null && (

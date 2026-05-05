@@ -22,7 +22,8 @@ import "./StateMap.css";
 
 export default function StateMap({
   currentState, uiMode, onGoToState, onInput, level = 0,
-  rampStyle = "smooth", auxPatternIndex = 0, auxColorIndex = 0,
+  rampStyle = "smooth", rampConfig = null,
+  auxPatternIndex = 0, auxColorIndex = 0,
   sunsetSeconds = 0, sunsetSpeedMultiplier = 1, toggleSunsetSpeed = () => {},
 }) {
   const isAdvanced         = uiMode === "full";
@@ -159,6 +160,7 @@ export default function StateMap({
         currentState={currentState}
         level={level}
         rampStyle={rampStyle}
+        rampConfig={rampConfig}
         reachableFromCurrent={reachableFromCurrent}
         onGoToState={onGoToState}
         uiMode={uiMode}

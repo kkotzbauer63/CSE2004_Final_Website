@@ -20,7 +20,7 @@ export const RAMP = {
     { action: "4C",  target: "LOCKOUT",           ui: UI.ANY,  kind: TRANSITION_KIND.NAVIGATE,  description: "Lockout mode",                                     condition: null },
     { action: "5C",  target: "MOMENTARY_MODE",    ui: UI.FULL, kind: TRANSITION_KIND.NAVIGATE,  description: "Momentary mode (steady at current brightness)",    condition: null },
     { action: "5H",  target: "SUNSET_TIMER",      ui: UI.FULL, kind: TRANSITION_KIND.NAVIGATE,  description: "Activate sunset timer (hold — each blink = +5 min)", condition: null },
-    { action: "6C",  target: "_self",             ui: UI.FULL, kind: TRANSITION_KIND.INTERNAL,  description: "Toggle smooth ↔ stepped ramp",                    condition: null, toggleEffect: "rampStyle" },
+    { action: "3C",  target: "_self",             ui: UI.ANY,  kind: TRANSITION_KIND.INTERNAL,  description: "Toggle smooth ↔ stepped ramp",                    condition: null, toggleEffect: "rampStyle" },
     { action: "7H",  target: "RAMP_CONFIG",       ui: UI.FULL, kind: TRANSITION_KIND.CONFIG,    description: "Ramp config menu (floor, ceiling, speed/steps)",   condition: null },
     { action: "10C", target: "_self",             ui: UI.FULL, kind: TRANSITION_KIND.INTERNAL,  description: "Save manual memory (current brightness)",          condition: null },
     { action: "10H", target: "RAMP_EXTRAS_CONFIG",ui: UI.FULL, kind: TRANSITION_KIND.CONFIG,    description: "Ramp extras config menu",                          condition: null },

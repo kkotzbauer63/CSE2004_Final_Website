@@ -10,6 +10,11 @@ import {
 } from "./utils/readoutEncoder.js";
 import { nodeMap } from "./data/graph.js";
 import { NODE_TYPE } from "./data/constants.js";
+import {
+  RAMP_CONFIG_SCHEMA,
+  RAMP_EXTRAS_SCHEMA,
+  SIMPLE_UI_CONFIG_SCHEMA,
+} from "./data/flashlightConfig.js";
 import FlashlightSimulator from "./components/FlashlightSimulator.jsx";
 import TransitionPanel from "./components/TransitionPanel.jsx";
 import StateMap from "./components/StateMap.jsx";
@@ -44,22 +49,31 @@ export default function App() {
     handleInput,
     startRamp,
     stopRamp,
+    stopMomentary,
     goToState,
     history,
     auxDisplay,
     auxPatternIndex,
     auxColorIndex,
+    advancedConfig,
+    simpleConfig,
+    updateAdvancedConfig,
+    updateSimpleConfig,
     sunsetSeconds,
     addSunsetMinutes,
     sunsetSpeedMultiplier,
     toggleSunsetSpeed,
   } = useStateMachine("OFF");
 
+  // Active ramp config for state map display
+  const activeRampConfig = uiMode === "full" ? advancedConfig : simpleConfig;
+
   // ── Normal button input (used when NOT in a config menu) ────────────────
   const { buttonHandlers, isButtonPressed, pendingInput, cancelInput } = useButtonInput({
     handleInput,
     startRamp,
     stopRamp,
+    stopMomentary,
   });
 
   // ── Readout flash sequences (battery / temp / version) ──────────────────
@@ -96,15 +110,18 @@ export default function App() {
   const levelRef = useRef(level);
   levelRef.current = level;
 
+  // Capture which menu was entered and the ramp style at entry time
+  // so the completion callback can apply results to the right config.
+  const menuEntryRef = useRef({ menuState: null, rampStyle: "smooth" });
+
   // Start the config menu whenever we enter a CONFIG_MENU state
   useEffect(() => {
     const node = nodeMap[currentState];
     if (node?.type !== NODE_TYPE.CONFIG_MENU) return;
 
-    // The config menu was entered via a hold (e.g. 7H).  The normal button
-    // handler still has isHeld=true and a non-zero clickCount from that
-    // sequence.  Cancel it now so it starts clean when we return.
     cancelInput();
+
+    menuEntryRef.current = { menuState: currentState, rampStyle };
 
     const itemCount = getItemCount(node);
     const returnsTo = node.returnsTo ?? "OFF";
@@ -112,11 +129,41 @@ export default function App() {
     startConfigMenu(
       itemCount,
       (results) => {
-        // Results are available here for any UI that wants to show them.
-        // Return to the state the user was in before entering the config menu.
+        const { menuState, rampStyle: entryRampStyle } = menuEntryRef.current;
+
+        // Apply menu results to the appropriate config store
+        const applyResults = (schema, update) => {
+          const updates = {};
+          for (const result of results) {
+            if (result.skipped) continue;
+            const entry = Array.isArray(schema)
+              ? schema[result.itemIndex]
+              : (schema[entryRampStyle] ?? schema.smooth)?.[result.itemIndex];
+            if (entry) updates[entry.key] = entry.compute(result.value);
+          }
+          if (Object.keys(updates).length > 0) update(updates);
+        };
+
+        if (menuState === "RAMP_CONFIG") {
+          const schema = RAMP_CONFIG_SCHEMA[entryRampStyle] ?? RAMP_CONFIG_SCHEMA.smooth;
+          const updates = {};
+          for (const result of results) {
+            if (result.skipped) continue;
+            const entry = schema[result.itemIndex];
+            if (entry) updates[entry.key] = entry.compute(result.value);
+          }
+          if (Object.keys(updates).length > 0) updateAdvancedConfig(updates);
+
+        } else if (menuState === "RAMP_EXTRAS_CONFIG") {
+          applyResults(RAMP_EXTRAS_SCHEMA, updateAdvancedConfig);
+
+        } else if (menuState === "SIMPLE_UI_CONFIG") {
+          applyResults(SIMPLE_UI_CONFIG_SCHEMA, updateSimpleConfig);
+        }
+
         goToState(returnsTo);
       },
-      isButtonPressedRef.current,   // true when entered via a hold (e.g. 7H)
+      isButtonPressedRef.current,
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentState]);
@@ -267,6 +314,7 @@ export default function App() {
             onInput={handleInput}
             level={level}
             rampStyle={rampStyle}
+            rampConfig={activeRampConfig}
             auxPatternIndex={auxPatternIndex}
             auxColorIndex={auxColorIndex}
             sunsetSeconds={sunsetSeconds}

@@ -45,7 +45,7 @@ export default function FlashlightSimulator({
   const TIP_D60   = 66 / (2 * Math.tan(Math.PI / 6));       // ≈ 57.19px
   const TIP_D150  = 66 / (2 * Math.tan(5 * Math.PI / 12)); // ≈  8.84px
 
-  const beamLength = pct * 70;           // 0 → 70px above bezel
+  const beamLength = pct * BEZEL_Y;      // 0 → 81px above bezel (reaches container top at full brightness)
   const coneTop    = BEZEL_Y - beamLength;
 
   const h60  = beamLength + TIP_D60;    // total SVG height (includes submerged portion)

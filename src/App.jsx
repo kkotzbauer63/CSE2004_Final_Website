@@ -19,6 +19,7 @@ import FlashlightSimulator from "./components/FlashlightSimulator.jsx";
 import TransitionPanel from "./components/TransitionPanel.jsx";
 import StateMap from "./components/StateMap.jsx";
 import ReferenceGuide from "./components/ReferenceGuide.jsx";
+import SunTimeBar from "./components/SunTimeBar.jsx";
 import "./App.css";
 
 // Demo values shown while in the respective readout states.
@@ -260,6 +261,7 @@ export default function App() {
           <h1 className="app__title">Anduril</h1>
           <span className="app__version">Interactive Guide</span>
         </div>
+        <SunTimeBar />
         <div className="app__controls">
           <div className="app__ui-toggle">
             <span className="app__toggle-label">UI Mode</span>

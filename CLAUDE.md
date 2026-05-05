@@ -160,70 +160,63 @@ A simpler MVP approach: skip real-time button detection initially and instead sh
 
 ---
 
-## GitHub API integration
+## API integration — Ambient light level (sunrise-sunset.org)
 
-### What to fetch
+The site uses the browser Geolocation API combined with the free **sunrise-sunset.org** REST API to show users where they currently are in the day/night cycle. This is directly relevant to Anduril use: different twilight phases map onto different flashlight needs.
 
-The GitHub REST API (no authentication required for public repos, 60 requests/hour rate limit) provides:
+### Step 1 — Get coordinates with Geolocation
 
-1. **Raw manual content**: `GET https://api.github.com/repos/ToyKeeper/anduril/contents/docs/anduril-manual.md?ref={tag}`
-   - Returns base64-encoded file content
-   - Use the `ref` parameter to fetch specific release versions (e.g., `ref=r2025-07-07`)
-   - The response includes the raw markdown which contains the UI Reference Table
-
-2. **Releases list**: `GET https://api.github.com/repos/ToyKeeper/anduril/releases`
-   - Returns all tagged releases with names, dates, and changelog bodies
-   - Known release tags: `r2023-12-03`, `r2024-04-01`, `r2024-04-20`, `r2025-07-07`
-
-3. **Changelog**: `GET https://api.github.com/repos/ToyKeeper/anduril/contents/ChangeLog.md`
-
-### UI Reference Table parsing
-
-The table at the end of `anduril-manual.md` is a fixed-width plain text table with four columns:
-
-```
-Mode        UI       Button    Action
-----        --       ------    ------
-Off         Any      1C        On (ramp mode, memorized level)
-Off         Any      1H        On (ramp mode, floor level)
-Off         Full     3H        Strobe mode (whichever was used last)
-Ramp        Any      1C        Off
-Lockout     Any      1H        Momentary moon (floor level)
+```javascript
+navigator.geolocation.getCurrentPosition(
+  ({ coords: { latitude, longitude } }) => {
+    const tzid = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    fetchSunTimes(latitude, longitude, tzid);
+  },
+  (error) => { /* fallback: show generic unavailable message */ }
+);
 ```
 
-The table heading is `## UI Reference Table` in the markdown version. To parse it:
+### Step 2 — Fetch from sunrise-sunset.org
 
-1. Find the section by searching for "UI Reference Table" in the markdown
-2. Skip the header row and separator row
-3. Split each subsequent line by whitespace (columns are whitespace-delimited)
-4. Extract: Mode, UI (Any/Simple/Full), Button (e.g., 1C, 3H), Action (remainder of line)
-5. Group by Mode to produce the state machine data structure
+```
+GET https://api.sunrise-sunset.org/json?lat=38.627&lng=-90.197&formatted=0&tzid=America/Chicago
+```
 
-**Important caveats:**
-- The table has existed in the manual since at least the GitHub migration (late 2023), but may not exist in every historical version
-- Some actions span multiple lines or include sub-items (e.g., config menu options listed as `?1:`, `?2:`)
-- The Action column may contain parenthetical notes
-- Always validate parsed data against expected states before using it to populate the simulator
+- `formatted=0` returns ISO 8601 UTC timestamps (easy to parse with `new Date()`)
+- `tzid` (from `Intl.DateTimeFormat().resolvedOptions().timeZone`) ensures the correct local day is used for the calculation
+- No API key required; free tier is sufficient for this use case
 
-### Version selector feature
+**Response fields used:**
 
-Let users pick a firmware version from a dropdown populated by the GitHub Releases API. When they select a version:
+| Field | Meaning |
+|---|---|
+| `sunrise` / `sunset` | Sun crosses the horizon |
+| `civil_twilight_end` | Sun 6° below horizon — aux LEDs become useful |
+| `nautical_twilight_end` | Sun 12° below — main emitter useful at low-mid levels |
+| `astronomical_twilight_end` | Sun 18° below — true darkness, full ramp range relevant |
 
-- Fetch the manual at that release tag
-- Parse the UI Reference Table
-- Display the release notes/changelog for that version
-- Show what changed from the previous version (added/removed transitions)
+### Step 3 — Light phase → Anduril relevance
 
-This is valuable because most users do not have flashing kits and are running whatever firmware shipped with their light, which could be from any of the past few releases.
+| Phase | What it means for Anduril |
+|---|---|
+| Daylight | No flashlight needed |
+| Civil twilight | Aux LEDs becoming visible; low modes sufficient |
+| Nautical twilight | Main emitter useful at low–mid levels |
+| Astronomical twilight | Full ramp range relevant; moonlight mode practical |
+| Night | True darkness — deepest Anduril features shine |
+
+### Implementation
+
+- `src/services/sunTimeService.js` — the `fetch()` call
+- `src/hooks/useSunTimes.js` — geolocation + API call; exports `useSunTimes()` and `getCurrentPhase(phases, now)`
+- `src/components/SunTimeBar.jsx` — header bar component; desktop shows full timeline, mobile shows compact phase label
 
 ### Implementation approach (recommended order)
 
-1. **First**: Manually define the state machine data from the current (trunk) UI Reference Table. Get the simulator working with hardcoded data.
-2. **Second**: Add the GitHub API integration to fetch and display release info (version number, date, changelog). This satisfies the API requirement immediately.
-3. **Third**: Build the markdown parser to extract the UI Reference Table from fetched manual content.
-4. **Fourth** (stretch goal): Use the parsed table to dynamically populate or validate the state machine, with the manual data as fallback.
+1. **First**: Manually define the state machine data. Get the simulator working with hardcoded data.
+2. **Second**: Add the sunrise-sunset.org API integration to show the ambient light level bar. This satisfies the API requirement immediately and adds genuine user value.
 
-This order ensures you always have a working project at each step, and the API integration adds genuine value rather than being a fragile dependency.
+This order ensures a working project at each step, and the API integration is load-bearing from day one rather than a cosmetic add-on.
 
 ---
 
@@ -234,13 +227,14 @@ This order ensures you always have a working project at each step, and the API i
 - **Framework**: React (functional components with hooks)
 - **Styling**: CSS (or Tailwind if preferred by the class)
 - **State visualization**: SVG or a library like D3.js for the interactive state map
-- **No backend required**: All logic runs client-side; GitHub API is called directly from the browser
-- **Data source**: ToyKeeper/anduril repository on GitHub (GPL v3)
+- **No backend required**: All logic runs client-side; external APIs are called directly from the browser
+- **External API**: sunrise-sunset.org (free, no key required) for ambient light level data
+- **State machine data**: Hardcoded from the ToyKeeper/anduril manual (GPL v3)
 
 ### React patterns to use
 
 - **`useState`** for tracking current state, UI mode, brightness level, aux settings
-- **`useEffect`** for GitHub API calls on mount or when the selected version changes
+- **`useEffect`** for API calls on mount (geolocation + sun times)
 - **`useRef`** for button press timing (needs to persist between renders without causing re-renders)
 - **Custom hooks** (like `useStateMachine` above) to encapsulate state machine logic cleanly
 - **Props** to pass state down to child components (FlashlightVisual, TransitionPanel, StateMap)
@@ -249,7 +243,7 @@ This order ensures you always have a working project at each step, and the API i
 
 - Don't use React class components — the entire ecosystem has moved to functions + hooks
 - Don't put the state machine logic inside React components — keep it in plain JS modules
-- Don't try to dynamically build the state machine from the GitHub API as the first step — get it working with hardcoded data first
+- Don't try to dynamically build the state machine from fetched data — the hardcoded node definitions are the source of truth
 - Don't implement real-time button press detection before the basic simulator works — start with clickable transition items, add physical button simulation later
 
 ### OOP and design patterns

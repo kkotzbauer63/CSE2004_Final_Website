@@ -9,6 +9,7 @@
   position: relative;
   width: 200px;
   height: 400px;
+  overflow: hidden; /* clips 150° spill cone at container edges */
 }
 
 /* Flashlight SVG — centered horizontally, pushed down to leave beam room */
@@ -22,27 +23,7 @@
   filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
 }
 
-/* Beam container — bottom edge pinned to D4V2 emitter face top (70px + 11px = 81px) */
-.simulator__beam-container {
-  position: absolute;
-  bottom: calc(100% - 81px);
-  left: 0;
-  right: 0;
-  display: flex;
-  justify-content: center;
-  align-items: flex-end;
-  pointer-events: none;
-  overflow: visible;
-}
-
-.simulator__beam {
-  transition: width 0.2s ease;
-}
-
-.simulator__beam-glow {
-  width: 100%;
-  border-radius: 50% 50% 0 0;
-}
+/* Beam cones are positioned absolutely as inline SVGs (see FlashlightSimulator.jsx) */
 
 /* Status readout */
 .simulator__status {

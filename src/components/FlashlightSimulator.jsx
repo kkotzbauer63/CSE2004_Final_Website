@@ -27,11 +27,31 @@ export default function FlashlightSimulator({
   const pct  = activeBrightness / 100; // 0–1
   const isOn = activeBrightness > 0;
 
-  // Beam size scales: 40px at min → 200px at max
-  const beamWidth = 40 + pct * 160;
-  const beamHeight = 30 + pct * 106;
-  const coreOpacity = 0.1 + pct * 0.6;
-  const glowOpacity = pct * 0.3;
+  // ── Cone beam geometry ────────────────────────────────────────────────────
+  // Flashlight SVG rendered at 110×330px, positioned top:70px in 200px container.
+  // Bezel rect is at SVG y=20, so in container: top = 70 + (20/600)*330 = 81px.
+  // Bezel spans SVG x=40–160 (width 120/200) → rendered width = (120/200)*110 = 66px.
+  //
+  // 60° cone  (viewBox 200×100, aspect 2:1):
+  //   half-angle = 30° → cone_width = 2 * d * tan(30°)
+  //   for width=66px at bezel: d = 66 / (2*tan(30°)) ≈ 57.19px below bezel
+  //
+  // 150° cone (viewBox 200×25, aspect 8:1):
+  //   half-angle = 75° → cone_width = 2 * d * tan(75°)
+  //   for width=66px at bezel: d = 66 / (2*tan(75°)) ≈ 8.84px below bezel
+  //
+  // Both SVG tips are fixed below the bezel; only height (beam_length above bezel) scales.
+  const BEZEL_Y   = 81;
+  const TIP_D60   = 66 / (2 * Math.tan(Math.PI / 6));       // ≈ 57.19px
+  const TIP_D150  = 66 / (2 * Math.tan(5 * Math.PI / 12)); // ≈  8.84px
+
+  const beamLength = pct * 70;           // 0 → 70px above bezel
+  const coneTop    = BEZEL_Y - beamLength;
+
+  const h60  = beamLength + TIP_D60;    // total SVG height (includes submerged portion)
+  const w60  = 2 * h60;                 // viewBox aspect 200:100 = 2
+  const h150 = beamLength + TIP_D150;
+  const w150 = 8 * h150;               // viewBox aspect 200:25  = 8
 
   // Disco / rainbow animation for aux indicator
   const isDiscoMode   = auxDisplay?.colorName === "disco";
@@ -67,24 +87,71 @@ export default function FlashlightSimulator({
   return (
     <div className="simulator">
       <div className="simulator__visual">
-        {/* Beam — emits upward from head */}
+        {/* ── Beam cones — emit upward from bezel ─────────────────────── */}
         {isOn && (
-          <div className="simulator__beam-container">
-            <div className="simulator__beam" style={{ width: beamWidth }}>
-              <div
-                className="simulator__beam-glow"
-                style={{
-                  background: `radial-gradient(
-                    ellipse 100% 100% at 50% 100%,
-                    rgba(255, 248, 220, ${coreOpacity}) 0%,
-                    rgba(255, 248, 220, ${glowOpacity}) 40%,
-                    transparent 70%
-                  )`,
-                  height: beamHeight,
-                }}
+          <>
+            {/* 150° spill cone — wide, dim ambient (peak opacity 0.33) */}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 200 25"
+              style={{
+                position: 'absolute',
+                top:  coneTop,
+                left: 100 - w150 / 2,
+                width:  w150,
+                height: h150,
+                opacity: pct,
+                pointerEvents: 'none',
+              }}
+            >
+              <defs>
+                <linearGradient
+                  id="fl-spill-grad"
+                  gradientUnits="userSpaceOnUse"
+                  x1="0" y1="0" x2="0" y2="25"
+                >
+                  <stop offset="0%"   stopColor="#fff8dc" stopOpacity={0.33} />
+                  <stop offset="100%" stopColor="#fff8dc" stopOpacity={0}    />
+                </linearGradient>
+              </defs>
+              <polygon
+                points="193.3,25 100,0 6.7,25"
+                fill="url(#fl-spill-grad)"
+                transform="rotate(180,100,12.5)"
               />
-            </div>
-          </div>
+            </svg>
+
+            {/* 60° hotspot cone — narrow, bright (peak opacity 0.9, ~3× spill) */}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 200 100"
+              style={{
+                position: 'absolute',
+                top:  coneTop,
+                left: 100 - w60 / 2,
+                width:  w60,
+                height: h60,
+                opacity: pct,
+                pointerEvents: 'none',
+              }}
+            >
+              <defs>
+                <linearGradient
+                  id="fl-spot-grad"
+                  gradientUnits="userSpaceOnUse"
+                  x1="0" y1="0" x2="0" y2="100"
+                >
+                  <stop offset="0%"   stopColor="#fff8dc" stopOpacity={0.9} />
+                  <stop offset="100%" stopColor="#fff8dc" stopOpacity={0}   />
+                </linearGradient>
+              </defs>
+              <polygon
+                points="157.7,100 100,0 42.3,100"
+                fill="url(#fl-spot-grad)"
+                transform="rotate(180,100,50)"
+              />
+            </svg>
+          </>
         )}
 
         {/* Emisar D4V2 flashlight SVG */}

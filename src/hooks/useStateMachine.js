@@ -91,6 +91,9 @@ export function useStateMachine(initialState = "OFF") {
   // Momentary-state tracking: when a momentary transition fires, store the return point
   const momentaryReturnRef = useRef(null); // { state: string, level: number } | null
 
+  // Memory: level recalled by 1C from OFF. null = use floor (no memory set yet).
+  const memorizedLevelRef = useRef(null);
+
   // Track last-used strobe child so STROBE_GROUP resolves correctly on re-entry
   const lastUsedStrobe = useRef(null);
 
@@ -122,6 +125,7 @@ export function useStateMachine(initialState = "OFF") {
     setAuxLockout({ pattern: 1, color: 0 });
     setAdvancedConfig({ ...DEFAULT_ADVANCED_CONFIG });
     setSimpleConfig({ ...DEFAULT_SIMPLE_CONFIG });
+    memorizedLevelRef.current = null;
   }, [currentState]);
 
   // ── Main input handler ────────────────────────────────────────────────────
@@ -191,6 +195,26 @@ export function useStateMachine(initialState = "OFF") {
         const cfg         = rampBoundsRef.current;
         const targetInfo  = getStateInfo(result.state);
 
+        // Auto-memory: save level whenever leaving ramp mode
+        if (
+          cfg.memoryMode === "auto" &&
+          RAMP_LIKE_STATES.has(currentState) &&
+          result.state !== currentState &&
+          !RAMP_LIKE_STATES.has(result.state)
+        ) {
+          memorizedLevelRef.current = levelRef.current;
+        }
+
+        // Manual memory: 10C from RAMP saves current level and switches to manual mode
+        if (result.transition?.memoryEffect === "save") {
+          memorizedLevelRef.current = levelRef.current;
+          if (uiMode === "full") {
+            setAdvancedConfig((prev) => ({ ...prev, memoryMode: "manual" }));
+          } else {
+            setSimpleConfig((prev) => ({ ...prev, memoryMode: "manual" }));
+          }
+        }
+
         if (result.transition?.rampEffect) {
           // Stepped mode: skip nudge — startRamp will jump to the first step immediately
           if (rampStyleRef.current !== "stepped") {
@@ -206,10 +230,14 @@ export function useStateMachine(initialState = "OFF") {
 
           // Turbo-style overrides for specific inputs
           if (input === "2C" && currentState === "RAMP") {
-            // A2 (default): at ceil → turbo; A1: always turbo; NONE: always ceil
-            if (cfg.turboStyle === TURBO_STYLE.A1) {
+            if (levelRef.current >= cfg.turboLevel) {
+              // Already at turbo: toggle back to ceil
+              targetLevel = cfg.ceilLevel;
+            } else if (cfg.turboStyle === TURBO_STYLE.A1) {
+              // A1: always jump to turbo
               targetLevel = cfg.turboLevel;
             } else if (cfg.turboStyle === TURBO_STYLE.A2 && levelRef.current >= cfg.ceilLevel) {
+              // A2: at ceil → turbo
               targetLevel = cfg.turboLevel;
             } else {
               targetLevel = cfg.ceilLevel;
@@ -227,6 +255,9 @@ export function useStateMachine(initialState = "OFF") {
           setLevel(targetLevel);
         } else if (targetInfo?.brightness === 0) {
           setLevel(0);
+        } else if (RAMP_LIKE_STATES.has(result.state) && !RAMP_LIKE_STATES.has(currentState)) {
+          // Entering ramp from outside (e.g. 1C from OFF): use memorized level
+          setLevel(memorizedLevelRef.current ?? cfg.floorLevel);
         } else {
           setLevel((prev) => {
             if (RAMP_LIKE_STATES.has(result.state) && prev > 0) return prev;

@@ -97,12 +97,12 @@ export const RAMP_EXPANDED_POSITIONS = {
   RAMP_EXTRAS_CONFIG: { x: 360, y: 255 },
 };
 
-// Expanded lockout view
+// Expanded lockout view — top row: OFF / LOCKOUT / RAMP; bottom: AUTO_LOCK_CONFIG
 export const LOCKOUT_POSITIONS = {
-  OFF:              { x: 30,  y: 60  },
-  LOCKOUT:          { x: 195, y: 105 },
-  RAMP:             { x: 360, y: 60  },
-  AUTO_LOCK_CONFIG: { x: 195, y: 200 },
+  OFF:              { x: 30,  y: 30  },
+  LOCKOUT:          { x: 195, y: 30  },
+  RAMP:             { x: 360, y: 30  },
+  AUTO_LOCK_CONFIG: { x: 195, y: 225 },
 };
 
 // Expanded tactical mode view

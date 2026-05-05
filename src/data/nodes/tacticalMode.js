@@ -14,14 +14,15 @@ export const TACTICAL_MODE = {
   entryPoint: "TACTICAL_SLOT_1",
   childIds: ["TACTICAL_SLOT_1", "TACTICAL_SLOT_2", "TACTICAL_SLOT_3"],
 
-  sharedTransitions: [],
-  transitions: [
+  sharedTransitions: [
     { action: "1H", target: "TACTICAL_SLOT_1", ui: UI.FULL, kind: TRANSITION_KIND.MOMENTARY, description: "Slot 1 (default: High) while held",   condition: null, momentary: true, brightnessHint: "turbo" },
     { action: "2H", target: "TACTICAL_SLOT_2", ui: UI.FULL, kind: TRANSITION_KIND.MOMENTARY, description: "Slot 2 (default: Low) while held",    condition: null, momentary: true, brightnessHint: "floor" },
     { action: "3H", target: "TACTICAL_SLOT_3", ui: UI.FULL, kind: TRANSITION_KIND.MOMENTARY, description: "Slot 3 (default: Strobe) while held", condition: null, momentary: true },
     { action: "6C", target: "OFF",             ui: UI.FULL, kind: TRANSITION_KIND.NAVIGATE,  description: "Exit tactical mode → Off",            condition: null },
+    { action: "7C", target: "_self",           ui: UI.FULL, kind: TRANSITION_KIND.INTERNAL,  description: "Aux LEDs: next pattern",              condition: null, auxEffect: "nextPattern" },
     { action: "7H", target: "TACTICAL_CONFIG", ui: UI.FULL, kind: TRANSITION_KIND.CONFIG,    description: "Tactical config menu",                condition: null },
   ],
+  transitions: [],
 };
 
 export const TACTICAL_SLOT_1 = {

@@ -30,7 +30,7 @@ export default function StateMap({
   const inConfigMenu       = nodeMap[currentState]?.type === NODE_TYPE.CONFIG_MENU;
   const inBlinkyExpanded   = !inConfigMenu && isAdvanced && BLINKY_STATES.has(currentState);
   const inStrobeExpanded   = isAdvanced && STROBE_STATES.has(currentState);
-  const inLockoutExpanded  = !inConfigMenu && isAdvanced && LOCKOUT_STATES.has(currentState);
+  const inLockoutExpanded  = !inConfigMenu && LOCKOUT_STATES.has(currentState);
   const inTacticalExpanded = !inConfigMenu && isAdvanced && TACTICAL_STATES.has(currentState);
   const inSunsetExpanded   = currentState === "SUNSET_TIMER";
   const inRampExpanded     = !inSunsetExpanded && RAMP_EXPANDED_STATES.has(currentState);
@@ -125,6 +125,8 @@ export default function StateMap({
         reachableFromCurrent={reachableFromCurrent}
         onGoToState={onGoToState}
         uiMode={uiMode}
+        isAdvanced={isAdvanced}
+        onInput={onInput}
       />
     );
   }
@@ -136,6 +138,7 @@ export default function StateMap({
         reachableFromCurrent={reachableFromCurrent}
         onGoToState={onGoToState}
         uiMode={uiMode}
+        onInput={onInput}
       />
     );
   }

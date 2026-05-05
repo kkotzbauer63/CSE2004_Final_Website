@@ -5,7 +5,7 @@ import { getStateInfo, getAvailableTransitions } from "../../stateMachine/engine
 import { TACTICAL_POSITIONS } from "./statemapLayouts.js";
 import { ArrowDef, EdgeLine, StateNode } from "./StateMapPrimitives.jsx";
 
-export default function StateMapTactical({ currentState, reachableFromCurrent, onGoToState, uiMode }) {
+export default function StateMapTactical({ currentState, reachableFromCurrent, onGoToState, uiMode, onInput }) {
   // Edges always built from the container's transitions (slots have no own transitions)
   const tacticalEdges = useMemo(() => {
     const transitions = getAvailableTransitions("TACTICAL_MODE", uiMode);
@@ -26,12 +26,22 @@ export default function StateMapTactical({ currentState, reachableFromCurrent, o
         <span className="statemap__mode">Advanced UI</span>
       </div>
       <div className="statemap__container">
-        <svg className="statemap__svg" viewBox="0 0 580 275" xmlns="http://www.w3.org/2000/svg">
+        <svg className="statemap__svg" viewBox="0 0 580 290" xmlns="http://www.w3.org/2000/svg">
           <ArrowDef />
           <rect x="383" y="20" width="185" height="235" rx="4"
             fill="none" stroke="#2a2a2c" strokeWidth="1" strokeDasharray="4 4" />
           <text x="475" y="268" textAnchor="middle" className="statemap__ring-label">
             momentary hold
+          </text>
+
+          {/* Aux cycling annotation — 7C cycles pattern, 7H is reserved for config */}
+          <text
+            x={140} y={278}
+            textAnchor="middle" className="statemap__ramp-action"
+            style={{ pointerEvents: "auto", cursor: "pointer" }}
+            onClick={() => onInput?.("7C")}
+          >
+            7C · Aux Pattern ↺
           </text>
           {tacticalEdges.map((e) => (
             <EdgeLine

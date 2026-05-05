@@ -29,6 +29,7 @@ export const DEFAULT_ADVANCED_CONFIG = Object.freeze({
   turboStyle:  TURBO_STYLE.A2,
   rampSpeed:   1,           // smooth ramp: 1=fastest (~2.5s), 4=slowest (~10s)
   stepCount:   7,           // stepped ramp: number of discrete steps
+  memoryMode:  "auto",      // "auto" = last-used level, "manual" = saved level (10C)
 });
 
 export const DEFAULT_SIMPLE_CONFIG = Object.freeze({
@@ -37,6 +38,7 @@ export const DEFAULT_SIMPLE_CONFIG = Object.freeze({
   turboLevel:  150,
   turboStyle:  TURBO_STYLE.NONE,  // Simple UI hides turbo by default
   stepCount:   5,
+  memoryMode:  "auto",
 });
 
 // ── Config menu result schemas (Strategy pattern) ────────────────────────────
@@ -62,7 +64,8 @@ export const RAMP_CONFIG_SCHEMA = {
 };
 
 export const RAMP_EXTRAS_SCHEMA = [
-  null,  // itemIndex 0 (position 1): disable manual memory — no config store effect
+  // itemIndex 0 (position 1): memory mode — 1C = auto memory, 2C = manual memory
+  { key: 'memoryMode', compute: (v) => v === 1 ? "auto" : "manual" },
   null,  // itemIndex 1 (position 2): manual memory timer — no config store effect
   null,  // itemIndex 2 (position 3): ramp-after-moon style — no config store effect
   // itemIndex 3 (position 4): turbo style

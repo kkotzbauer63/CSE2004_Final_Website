@@ -1,12 +1,7 @@
 import { useState, useEffect } from "react";
 import "./FlashlightSimulator.css";
 import { CM_PHASE } from "../utils/configMenuEngine.js";
-import { DISCO_CYCLE_HEX } from "../hooks/useStateMachine.js";
-
-// Convert Anduril level (1–150) to a 0–100 percentage for the visual
-function levelToPercent(lvl) {
-  return lvl > 0 ? ((lvl - 1) / 149) * 100 : 0;
-}
+import { DISCO_CYCLE_HEX, levelToPercent } from "../hooks/useStateMachine.js";
 
 export default function FlashlightSimulator({
   stateInfo,
@@ -24,7 +19,7 @@ export default function FlashlightSimulator({
   const activeBrightness = readoutLevel !== null ? levelToPercent(readoutLevel) : brightness;
   const activeLevel      = readoutLevel !== null ? readoutLevel : level;
 
-  const pct  = activeBrightness / 100; // 0–1
+  const pct  = activeBrightness === 0 ? 0 : 0.375 + activeBrightness / 160; // 0.38–1
   const isOn = activeBrightness > 0;
 
   // ── Cone beam geometry ────────────────────────────────────────────────────

@@ -47,7 +47,9 @@ const STEPPED_INTERVAL_MS = 500; // 0.5s between steps in stepped mode
 
 // Convert Anduril level (1–150) to a 0–100 percentage for the visual
 export function levelToPercent(level) {
-  return ((level - 1) / (MAX_LEVEL - 1)) * 100;
+  if (level <= 0) return 0;
+  const clamped = Math.max(MIN_LEVEL, Math.min(MAX_LEVEL, level));
+  return 1 + ((clamped - MIN_LEVEL) / (MAX_LEVEL - MIN_LEVEL)) * 99;
 }
 
 // States where auxOff settings should be displayed (same as off mode)

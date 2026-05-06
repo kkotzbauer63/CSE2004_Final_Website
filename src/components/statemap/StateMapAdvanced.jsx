@@ -31,18 +31,17 @@ export default function StateMapAdvanced({ visibleStates, defaultEdges, currentS
           {(() => {
             const atOff = currentState === "OFF";
             const nx = 30, ny = 85, nw = 110, nh = 36;
-            // edge: OFF left-center → node right-center
-            const ex1 = DEFAULT_POSITIONS.OFF.x, ey1 = DEFAULT_POSITIONS.OFF.y, ex2 = nx + nw, ey2 = ny + nh / 2;
-            const mx = (ex1 + ex2) / 2, my = (ey1 + ey2) / 2;
             return (
               <g>
-                <line x1={ex1} y1={ey1} x2={ex2} y2={ey2}
-                  stroke="#D4A84B" strokeWidth="1.5"
+                <EdgeLine
+                  from={DEFAULT_POSITIONS.OFF}
+                  to={{ x: nx, y: ny }}
+                  inputs={["10C"]}
+                  toW={nw}
+                  toH={nh}
                   strokeOpacity={atOff ? 0.5 : 0.12}
-                  markerEnd="url(#arrowhead)"
+                  labelOpacity={atOff ? 1 : 0.35}
                 />
-                <text x={mx} y={my - 5} textAnchor="middle" className="statemap__edge-label"
-                  opacity={atOff ? 1 : 0.35}>10C</text>
                 <g onClick={() => onInput("10C")} style={{ cursor: "pointer" }}
                   opacity={atOff ? 1 : 0.3}>
                   <rect x={nx} y={ny} width={nw} height={nh} rx="2"
@@ -67,6 +66,8 @@ export default function StateMapAdvanced({ visibleStates, defaultEdges, currentS
                 key={`${e.from}-${e.to}`}
                 from={fromPos} to={toPos}
                 inputs={e.inputs}
+                toW={e.to === "BLINKY_GROUP" || e.to === "STROBE_GROUP" ? CLUSTER_W : undefined}
+                toH={e.to === "BLINKY_GROUP" || e.to === "STROBE_GROUP" ? CLUSTER_H : undefined}
               />
             );
           })}

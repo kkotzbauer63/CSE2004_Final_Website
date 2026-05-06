@@ -21,18 +21,17 @@ export default function StateMapSimple({ visibleStates, defaultEdges, currentSta
           {(() => {
             const atOff = currentState === "OFF";
             const nx = 40, ny = 22, nw = 120, nh = 36;
-            // edge: OFF left-center → node right-center
-            const ex1 = 220, ey1 = 48, ex2 = nx + nw, ey2 = ny + nh / 2;
-            const mx = (ex1 + ex2) / 2, my = (ey1 + ey2) / 2;
             return (
               <g>
-                <line x1={ex1} y1={ey1} x2={ex2} y2={ey2}
-                  stroke="#D4A84B" strokeWidth="1.5"
+                <EdgeLine
+                  from={SIMPLE_POSITIONS.OFF}
+                  to={{ x: nx, y: ny }}
+                  inputs={["10H"]}
+                  toW={nw}
+                  toH={nh}
                   strokeOpacity={atOff ? 0.5 : 0.12}
-                  markerEnd="url(#arrowhead)"
+                  labelOpacity={atOff ? 1 : 0.35}
                 />
-                <text x={mx} y={my - 5} textAnchor="middle" className="statemap__edge-label"
-                  opacity={atOff ? 1 : 0.35}>10H</text>
                 <g onClick={() => onInput("10H")} style={{ cursor: "pointer" }}
                   opacity={atOff ? 1 : 0.3}>
                   <rect x={nx} y={ny} width={nw} height={nh} rx="2"

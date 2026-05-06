@@ -17,7 +17,13 @@ const BOX1_X = 14;
 const BOX2_X = BOX1_X + BOX_W + 8;  // 214
 const BOX3_X = BOX2_X + BOX_W + 8;  // 414
 
-export default function StateMapConfigMenu({ node, onGoToState, rampStyle = "smooth" }) {
+export default function StateMapConfigMenu({
+  node,
+  onGoToState,
+  onStartConfig,
+  isPreview = false,
+  rampStyle = "smooth",
+}) {
   if (!node) return null;
 
   const isVariant  = !!node.menuVariants;
@@ -92,13 +98,24 @@ export default function StateMapConfigMenu({ node, onGoToState, rampStyle = "smo
 
           {/* ── Return button (right) ──────────────────────────────────── */}
           <g role="button" style={{ cursor: "pointer" }} onClick={() => onGoToState(returnsTo)}>
-            <rect x="386" y="22" width="220" height="32" rx="2"
+            <rect x="386" y={isPreview ? 12 : 22} width="220" height="32" rx="2"
               fill="#1c1c1e" stroke="#8B8B8B" strokeWidth="1.5" />
-            <text x="496" y="39" textAnchor="middle" dominantBaseline="middle"
+            <text x="496" y={isPreview ? 29 : 39} textAnchor="middle" dominantBaseline="middle"
               className="statemap__node-label" fill="#bbb">
               ← {returnsNode?.name ?? returnsTo}
             </text>
           </g>
+
+          {isPreview && (
+            <g role="button" style={{ cursor: "pointer" }} onClick={() => onStartConfig?.(node.id)}>
+              <rect x="386" y="50" width="220" height="28" rx="2"
+                fill="#152018" stroke="#62d66f" strokeWidth="1.5" />
+              <text x="496" y="65" textAnchor="middle" dominantBaseline="middle"
+                className="statemap__node-label" fill="#62d66f">
+                (Start Config)
+              </text>
+            </g>
+          )}
 
           {/* ── Guide section title ─────────────────────────────────────── */}
           <text x="310" y={GUIDE_TOP + 12} textAnchor="middle"

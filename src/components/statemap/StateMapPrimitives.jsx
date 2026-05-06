@@ -12,19 +12,46 @@ export function ArrowDef() {
   );
 }
 
-export function EdgeLine({ from, to, inputs }) {
+function rectCenter(pos, w, h) {
+  return { x: pos.x + w / 2, y: pos.y + h / 2 };
+}
+
+function edgePoint(pos, w, h, dx, dy) {
+  const center = rectCenter(pos, w, h);
+  if (dx === 0 && dy === 0) return center;
+
+  const tx = dx === 0 ? Infinity : (w / 2) / Math.abs(dx);
+  const ty = dy === 0 ? Infinity : (h / 2) / Math.abs(dy);
+  const t = Math.min(tx, ty);
+
+  return {
+    x: center.x + dx * t,
+    y: center.y + dy * t,
+  };
+}
+
+export function EdgeLine({
+  from,
+  to,
+  inputs,
+  fromW = NODE_W,
+  fromH = NODE_H,
+  toW = NODE_W,
+  toH = NODE_H,
+  strokeOpacity = 0.5,
+  labelOpacity = 1,
+}) {
   if (!from || !to) return null;
-  const x1 = from.x + NODE_W / 2;
-  const y1 = from.y + NODE_H / 2;
-  const x2 = to.x + NODE_W / 2;
-  const y2 = to.y + NODE_H / 2;
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  const len = Math.sqrt(dx * dx + dy * dy) || 1;
-  const sx = x1 + (dx / len) * 22;
-  const sy = y1 + (dy / len) * 22;
-  const ex = x2 - (dx / len) * 26;
-  const ey = y2 - (dy / len) * 26;
+  const fromCenter = rectCenter(from, fromW, fromH);
+  const toCenter = rectCenter(to, toW, toH);
+  const dx = toCenter.x - fromCenter.x;
+  const dy = toCenter.y - fromCenter.y;
+  const start = edgePoint(from, fromW, fromH, dx, dy);
+  const end = edgePoint(to, toW, toH, -dx, -dy);
+  const sx = start.x;
+  const sy = start.y;
+  const ex = end.x;
+  const ey = end.y;
   const mx = (sx + ex) / 2;
   const my = (sy + ey) / 2;
 
@@ -32,10 +59,22 @@ export function EdgeLine({ from, to, inputs }) {
     <g>
       <line
         x1={sx} y1={sy} x2={ex} y2={ey}
-        stroke="#D4A84B" strokeWidth="1.5" strokeOpacity="0.5"
+        stroke="#D4A84B" strokeWidth="1.5" strokeOpacity={strokeOpacity}
         markerEnd="url(#arrowhead)"
       />
-      <text x={mx} y={my - 5} textAnchor="middle" className="statemap__edge-label">
+      <text
+        x={mx} y={my}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        className="statemap__edge-label"
+        style={{
+          fill: "#62d66f",
+          stroke: "#1c1c1e",
+          strokeWidth: 4,
+          paintOrder: "stroke",
+          opacity: labelOpacity,
+        }}
+      >
         {inputs.join(", ")}
       </text>
     </g>

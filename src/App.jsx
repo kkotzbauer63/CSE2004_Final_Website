@@ -81,6 +81,29 @@ export default function App() {
 
   // Active ramp config for state map display
   const activeRampConfig = uiMode === "full" ? advancedConfig : simpleConfig;
+  const [stateMapPreview, setStateMapPreview] = useState(null);
+  const stateMapPreviewState = stateMapPreview?.baseState === currentState ? stateMapPreview.state : null;
+  const stateMapState = stateMapPreviewState ?? currentState;
+
+  const handleStateMapGoToState = useCallback((nodeId) => {
+    if (nodeMap[nodeId]?.type === NODE_TYPE.CONFIG_MENU) {
+      setStateMapPreview({ state: nodeId, baseState: currentState });
+      return;
+    }
+
+    setStateMapPreview(null);
+    goToState(nodeId);
+  }, [currentState, goToState]);
+
+  const handleStateMapInput = useCallback((input) => {
+    setStateMapPreview(null);
+    return handleInput(input);
+  }, [handleInput]);
+
+  const handleStartConfigFromMap = useCallback((nodeId) => {
+    setStateMapPreview(null);
+    goToState(nodeId);
+  }, [goToState]);
 
   // ── Normal button input (used when NOT in a config menu) ────────────────
   const { buttonHandlers, isButtonPressed, pendingInput, cancelInput } = useButtonInput({
@@ -381,10 +404,10 @@ export default function App() {
         <div className="app__col app__col--right">
           <ReferenceGuide />
           <StateMap
-            currentState={currentState}
+            currentState={stateMapState}
             uiMode={uiMode}
-            onGoToState={goToState}
-            onInput={handleInput}
+            onGoToState={handleStateMapGoToState}
+            onInput={handleStateMapInput}
             level={level}
             rampStyle={rampStyle}
             rampConfig={activeRampConfig}
@@ -393,6 +416,8 @@ export default function App() {
             lockoutAuxPatternIndex={lockoutAuxPatternIndex}
             lockoutAuxColorIndex={lockoutAuxColorIndex}
             tacticalSlots={tacticalSlots}
+            previewState={stateMapPreviewState}
+            onStartConfig={handleStartConfigFromMap}
             sunsetSeconds={sunsetSeconds}
             sunsetSpeedMultiplier={sunsetSpeedMultiplier}
             toggleSunsetSpeed={toggleSunsetSpeed}

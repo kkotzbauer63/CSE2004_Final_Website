@@ -26,6 +26,8 @@ export default function StateMap({
   auxPatternIndex = 0, auxColorIndex = 0,
   lockoutAuxPatternIndex = 0, lockoutAuxColorIndex = 0,
   tacticalSlots = [120, 60, 152],
+  previewState = null,
+  onStartConfig,
   sunsetSeconds = 0, sunsetSpeedMultiplier = 1, toggleSunsetSpeed = () => {},
 }) {
   const isAdvanced         = uiMode === "full";
@@ -84,6 +86,8 @@ export default function StateMap({
       <StateMapConfigMenu
         node={nodeMap[currentState]}
         onGoToState={onGoToState}
+        onStartConfig={onStartConfig}
+        isPreview={previewState === currentState}
         rampStyle={rampStyle}
       />
     );

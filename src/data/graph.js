@@ -78,8 +78,9 @@ export function getEffectiveTransitions(nodeId) {
   const node = nodeMap[nodeId];
   if (!node) return [];
   const parent = node.parent ? nodeMap[node.parent] : null;
-  const shared = parent?.sharedTransitions ?? [];
-  return [...shared, ...node.transitions];
+  const parentShared = parent?.sharedTransitions ?? [];
+  const ownShared = node.sharedTransitions ?? [];
+  return [...parentShared, ...ownShared, ...node.transitions];
 }
 
 /**

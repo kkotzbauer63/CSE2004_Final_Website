@@ -25,6 +25,7 @@ export default function StateMap({
   rampStyle = "smooth", rampConfig = null,
   auxPatternIndex = 0, auxColorIndex = 0,
   lockoutAuxPatternIndex = 0, lockoutAuxColorIndex = 0,
+  tacticalSlots = [120, 60, 152],
   sunsetSeconds = 0, sunsetSpeedMultiplier = 1, toggleSunsetSpeed = () => {},
 }) {
   const isAdvanced         = uiMode === "full";
@@ -159,6 +160,7 @@ export default function StateMap({
         onGoToState={onGoToState}
         uiMode={uiMode}
         onInput={onInput}
+        tacticalSlots={tacticalSlots}
       />
     );
   }

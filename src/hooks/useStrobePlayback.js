@@ -89,7 +89,7 @@ export function useStrobePlayback(currentState, level) {
         for (let i = 0; i < 10 && !cancelled; i += 1) {
           setIfActive(STROBE_OFF_LEVEL, auxDisplay(i < 5 ? "red" : "blue"));
           await wait(delay >> 1);
-          setIfActive(STROBE_OFF_LEVEL);
+          setIfActive(STROBE_OFF_LEVEL, { pattern: "off", colorName: null, color: null });
           await wait(delay);
         }
       }

@@ -5,7 +5,16 @@ import { getStateInfo, getAvailableTransitions } from "../../stateMachine/engine
 import { TACTICAL_POSITIONS } from "./statemapLayouts.js";
 import { ArrowDef, EdgeLine, StateNode } from "./StateMapPrimitives.jsx";
 
-export default function StateMapTactical({ currentState, reachableFromCurrent, onGoToState, uiMode, onInput }) {
+function formatSlotValue(value) {
+  if (value === 0) return "Last Strobe";
+  if (value >= 1 && value <= 150) return `Level ${value}`;
+  const names = ["Party", "Tactical", "Police", "Lightning", "Candle", "Bike"];
+  return names[value - 151] ?? "Strobe";
+}
+
+export default function StateMapTactical({
+  currentState, reachableFromCurrent, onGoToState, uiMode, onInput, tacticalSlots,
+}) {
   // Edges always built from the container's transitions (slots have no own transitions)
   const tacticalEdges = useMemo(() => {
     const transitions = getAvailableTransitions("TACTICAL_MODE", uiMode);
@@ -54,6 +63,7 @@ export default function StateMapTactical({ currentState, reachableFromCurrent, o
           {Object.keys(TACTICAL_POSITIONS).map((stateId) => {
             const pos = TACTICAL_POSITIONS[stateId];
             const info = getStateInfo(stateId);
+            const slotIndex = ["TACTICAL_SLOT_1", "TACTICAL_SLOT_2", "TACTICAL_SLOT_3"].indexOf(stateId);
             return (
               <StateNode
                 key={stateId}
@@ -61,6 +71,7 @@ export default function StateMapTactical({ currentState, reachableFromCurrent, o
                 isCurrent={stateId === currentState}
                 isReachable={reachableFromCurrent.has(stateId)}
                 onClick={() => onGoToState(stateId)}
+                label={slotIndex === -1 ? undefined : `${slotIndex + 1}H ${formatSlotValue(tacticalSlots[slotIndex])}`}
               />
             );
           })}

@@ -46,7 +46,7 @@ export function processInput(currentNodeId, input, uiMode, lastUsedStrobeId = nu
   }
 
   // If target is a container, resolve it to its concrete entry-point child
-  if (nodeMap[targetId]?.type === NODE_TYPE.CONTAINER) {
+  if (nodeMap[targetId]?.type === NODE_TYPE.CONTAINER && targetId !== "TACTICAL_MODE") {
     targetId = resolveContainerEntry(targetId, lastUsedStrobeId);
   }
 

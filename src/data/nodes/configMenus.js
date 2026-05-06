@@ -189,9 +189,9 @@ export const TACTICAL_CONFIG = {
   enteredVia: "7H",
   returnsTo: "TACTICAL_MODE",
   menuItems: [
-    { position: 1, name: "Tactical slot 1", default: 130, valueScheme: "1–150 = ramp level, 0 = last strobe, 151+ = specific strobe mode" },
-    { position: 2, name: "Tactical slot 2", default: 30,  valueScheme: "same scheme" },
-    { position: 3, name: "Tactical slot 3", default: 0,   valueScheme: "same scheme" },
+    { position: 1, name: "Tactical slot 1", default: 120, valueScheme: "1–150 = ramp level, 0 = last strobe, 151+ = specific strobe mode" },
+    { position: 2, name: "Tactical slot 2", default: 60,  valueScheme: "same scheme" },
+    { position: 3, name: "Tactical slot 3", default: 152, valueScheme: "same scheme" },
   ],
   transitions: [
     { action: "1C", target: "TACTICAL_MODE", ui: UI.FULL, kind: TRANSITION_KIND.NAVIGATE, description: "Exit config (return to Tactical)", condition: null },

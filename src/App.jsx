@@ -63,6 +63,9 @@ export default function App() {
     simpleConfig,
     updateAdvancedConfig,
     updateSimpleConfig,
+    tacticalSlots,
+    updateTacticalSlot,
+    activeTacticalStrobeId,
     sunsetSeconds,
     addSunsetMinutes,
     sunsetSpeedMultiplier,
@@ -169,6 +172,12 @@ export default function App() {
 
         } else if (menuState === "SIMPLE_UI_CONFIG") {
           applyResults(SIMPLE_UI_CONFIG_SCHEMA, updateSimpleConfig);
+
+        } else if (menuState === "TACTICAL_CONFIG") {
+          for (const result of results) {
+            if (result.skipped) continue;
+            updateTacticalSlot(result.itemIndex, result.value);
+          }
         }
 
         goToState(returnsTo);
@@ -240,7 +249,7 @@ export default function App() {
 
   const activeButtonHandlers = configActive ? configButtonHandlers : buttonHandlers;
   const activeIsButtonPressed = configActive ? configBtnPressed : isButtonPressed;
-  const strobePlayback = useStrobePlayback(currentState, level);
+  const strobePlayback = useStrobePlayback(activeTacticalStrobeId ?? currentState, level);
 
   // ── Brightness override priority ─────────────────────────────────────────
   // Config menu > readout > sunset blink > strobe animation > normal state brightness
@@ -332,6 +341,7 @@ export default function App() {
             auxColorIndex={auxColorIndex}
             lockoutAuxPatternIndex={lockoutAuxPatternIndex}
             lockoutAuxColorIndex={lockoutAuxColorIndex}
+            tacticalSlots={tacticalSlots}
             sunsetSeconds={sunsetSeconds}
             sunsetSpeedMultiplier={sunsetSpeedMultiplier}
             toggleSunsetSpeed={toggleSunsetSpeed}

@@ -12,6 +12,7 @@ import {
   DEFAULT_SIMPLE_CONFIG,
   computeStepLevels,
 } from "../data/flashlightConfig.js";
+import { STROBE_MODE_ORDER } from "../utils/strobeModes.js";
 
 // Aux LED patterns (cycle order matches Anduril firmware)
 export const AUX_PATTERNS = ["off", "low", "high", "blinking"];
@@ -53,10 +54,12 @@ export function levelToPercent(level) {
 
 // States where auxOff settings should be displayed (same as off mode)
 const AUX_OFF_STATES = new Set(["OFF", "AUX_PATTERN_CONFIG", "AUX_COLOR_CONFIG"]);
-const AUX_LOCKOUT_STATES = new Set(["LOCKOUT", "LOCKOUT_AUX_PATTERN_CONFIG", "LOCKOUT_AUX_COLOR_CONFIG"]);
+const AUX_LOCKOUT_STATES = new Set(["LOCKOUT", "LOCKOUT_AUX_PATTERN_CONFIG", "LOCKOUT_AUX_COLOR_CONFIG", "TACTICAL_MODE"]);
 
 // States where brightness should be preserved on navigation
 const RAMP_LIKE_STATES = new Set(["RAMP", "SUNSET_TIMER"]);
+const TACTICAL_SLOT_IDS = ["TACTICAL_SLOT_1", "TACTICAL_SLOT_2", "TACTICAL_SLOT_3"];
+const DEFAULT_TACTICAL_SLOTS = [120, 60, 152];
 
 /** Resolve a brightnessHint string to an Anduril level using the active config. */
 function resolveHint(hint, cfg) {
@@ -76,6 +79,17 @@ function closestStepLevel(level, cfg) {
   ), steps[0] ?? cfg.floorLevel);
 }
 
+function tacticalSlotIndexFromState(stateId) {
+  const index = TACTICAL_SLOT_IDS.indexOf(stateId);
+  return index === -1 ? null : index;
+}
+
+function tacticalValueToStrobeId(value, lastUsedStrobeId) {
+  if (value === 0) return lastUsedStrobeId ?? STROBE_MODE_ORDER[0];
+  if (value < 151) return null;
+  return STROBE_MODE_ORDER[value - 151] ?? STROBE_MODE_ORDER[STROBE_MODE_ORDER.length - 1];
+}
+
 export function useStateMachine(initialState = "OFF") {
   const [currentState, setCurrentState] = useState(initialState);
   const [uiMode, setUiMode] = useState("simple"); // "simple" | "full"
@@ -83,6 +97,7 @@ export function useStateMachine(initialState = "OFF") {
   const [history, setHistory] = useState([]);
   const [level, setLevel] = useState(0); // 0 = off, 1-150 = on
   const [rampStyle, setRampStyle] = useState("smooth"); // "smooth" | "stepped"
+  const [tacticalSlots, setTacticalSlots] = useState(() => [...DEFAULT_TACTICAL_SLOTS]);
 
   // ── Per-UI config state ────────────────────────────────────────────────────
   const [advancedConfig, setAdvancedConfig] = useState(() => ({ ...DEFAULT_ADVANCED_CONFIG }));
@@ -91,6 +106,7 @@ export function useStateMachine(initialState = "OFF") {
   // ── Refs for fresh access inside timers / stable callbacks ────────────────
   const levelRef      = useRef(0);
   const rampStyleRef  = useRef("smooth");
+  const tacticalSlotsRef = useRef(DEFAULT_TACTICAL_SLOTS);
   const rampTimer     = useRef(null);
   const rampDirection = useRef(null); // "up" | "down"
 
@@ -109,6 +125,7 @@ export function useStateMachine(initialState = "OFF") {
   // ── Keep refs in sync with state (updated in render body, not effects) ────
   levelRef.current     = level;
   rampStyleRef.current = rampStyle;
+  tacticalSlotsRef.current = tacticalSlots;
   const _activeCfg     = uiMode === "full" ? advancedConfig : simpleConfig;
   rampBoundsRef.current = _activeCfg;
 
@@ -125,6 +142,14 @@ export function useStateMachine(initialState = "OFF") {
     setSimpleConfig((prev) => ({ ...prev, ...updates }));
   }, []);
 
+  const updateTacticalSlot = useCallback((slotIndex, value) => {
+    setTacticalSlots((prev) => {
+      const next = [...prev];
+      next[slotIndex] = Math.max(0, Math.min(156, Math.round(value)));
+      return next;
+    });
+  }, []);
+
   // ── Factory reset side-effects ────────────────────────────────────────────
   useEffect(() => {
     if (currentState !== "FACTORY_RESET") return;
@@ -134,6 +159,7 @@ export function useStateMachine(initialState = "OFF") {
     setAuxLockout({ pattern: 1, color: 0 });
     setAdvancedConfig({ ...DEFAULT_ADVANCED_CONFIG });
     setSimpleConfig({ ...DEFAULT_SIMPLE_CONFIG });
+    setTacticalSlots([...DEFAULT_TACTICAL_SLOTS]);
     memorizedLevelRef.current = 75;
   }, [currentState]);
 
@@ -241,6 +267,9 @@ export function useStateMachine(initialState = "OFF") {
                 : Math.max(cur - 10, cfg.floorLevel);
             });
           }
+        } else if (result.transition?.tacticalSlot !== undefined) {
+          const tacticalValue = tacticalSlotsRef.current[result.transition.tacticalSlot] ?? 0;
+          setLevel(tacticalValue >= 1 && tacticalValue <= 150 ? tacticalValue : 75);
         } else if (result.transition?.brightnessHint) {
           let targetLevel = resolveHint(result.transition.brightnessHint, cfg);
 
@@ -433,6 +462,10 @@ export function useStateMachine(initialState = "OFF") {
   const availableTransitions = getAvailableTransitions(currentState, uiMode);
   const stateInfo            = getStateInfo(currentState);
   const brightness           = level === 0 ? 0 : levelToPercent(level);
+  const activeTacticalSlotIndex = tacticalSlotIndexFromState(currentState);
+  const activeTacticalStrobeId = activeTacticalSlotIndex === null
+    ? null
+    : tacticalValueToStrobeId(tacticalSlots[activeTacticalSlotIndex], lastUsedStrobe.current);
 
   // Resolved aux LED display
   const auxDisplay = useMemo(() => {
@@ -476,6 +509,9 @@ export function useStateMachine(initialState = "OFF") {
     simpleConfig,
     updateAdvancedConfig,
     updateSimpleConfig,
+    tacticalSlots,
+    updateTacticalSlot,
+    activeTacticalStrobeId,
     // Sunset timer
     sunsetSeconds,
     addSunsetMinutes,

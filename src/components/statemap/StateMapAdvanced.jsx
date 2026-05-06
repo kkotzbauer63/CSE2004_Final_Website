@@ -32,7 +32,7 @@ export default function StateMapAdvanced({ visibleStates, defaultEdges, currentS
             const atOff = currentState === "OFF";
             const nx = 30, ny = 85, nw = 110, nh = 36;
             // edge: OFF left-center → node right-center
-            const ex1 = DEFAULT_POSITIONS.OFF.x, ey1 = DEFAULT_POSITIONS.OFF.y + 18, ex2 = nx + nw, ey2 = ny + nh / 2;
+            const ex1 = DEFAULT_POSITIONS.OFF.x, ey1 = DEFAULT_POSITIONS.OFF.y, ex2 = nx + nw, ey2 = ny + nh / 2;
             const mx = (ex1 + ex2) / 2, my = (ey1 + ey2) / 2;
             return (
               <g>

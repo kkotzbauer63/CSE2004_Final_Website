@@ -113,17 +113,13 @@ export default function StateMapLockout({
             .map((stateId) => {
               const pos  = LOCKOUT_POSITIONS[stateId];
               const info = getStateInfo(stateId);
-              const clickAction =
-                stateId === "LOCKOUT_AUX_PATTERN_CONFIG" ? "7C" :
-                stateId === "LOCKOUT_AUX_COLOR_CONFIG" ? "7H" :
-                null;
               return (
                 <StateNode
                   key={stateId}
                   pos={pos} info={info}
                   isCurrent={stateId === currentState}
                   isReachable={reachableFromCurrent.has(stateId)}
-                  onClick={() => clickAction ? onInput?.(clickAction) : onGoToState(stateId)}
+                  onClick={() => onGoToState(stateId)}
                 />
               );
             })}

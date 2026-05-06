@@ -34,30 +34,30 @@ export const CLUSTER_H = 42;
 // Advanced UI default view (blinky + strobe shown as container cluster nodes)
 // viewBox: "0 0 700 560"; OFF is the hub, with related states arranged radially.
 export const DEFAULT_POSITIONS = {
-  OFF:                { x: 295, y: 252 },
-  RAMP:               { x: 295, y: 52  },
-  LOCKOUT:            { x: 140, y: 352 },
-  BLINKY_GROUP:       { x: 385, y: 75  },
-  STROBE_GROUP:       { x: 85,  y: 250 },
-  MOMENTARY_MODE:     { x: 195, y: 425 },
-  TACTICAL_MODE:      { x: 85,  y: 352 },
-  MISC_CONFIG:        { x: 495, y: 252 },
+  OFF:                { x: 295, y: 210 },
+  RAMP:               { x: 295, y: 100  },
+  LOCKOUT:            { x: 115, y: 210 },
+  BLINKY_GROUP:       { x: 375,  y: 320  },
+  STROBE_GROUP:       { x: 200,  y: 320 },
+  MOMENTARY_MODE:     { x: 30,  y: 280 },
+  TACTICAL_MODE:      { x: 475, y: 210 },
+  MISC_CONFIG:        { x: 155, y: 45 },
   // Aux config states (accessible from Off via 7C / 7H)
-  AUX_PATTERN_CONFIG: { x: 468, y: 152 },
-  AUX_COLOR_CONFIG:   { x: 468, y: 352 },
+  AUX_PATTERN_CONFIG: { x: 435, y: 45 },
+  AUX_COLOR_CONFIG:   { x: 560, y: 140 },
   // Simple UI ramp config (accessible from Off via 10H in Advanced UI)
-  SIMPLE_UI_CONFIG:   { x: 195, y: 75  },
+  SIMPLE_UI_CONFIG:   { x: 30, y: 140  },
   // Version check / factory reset
-  VERSION_CHECK:      { x: 295, y: 452 },
-  FACTORY_RESET:      { x: 385, y: 425 },
+  VERSION_CHECK:      { x: 295, y: 385 },
+  FACTORY_RESET:      { x: 560,  y: 280 },
 };
 
 // Simple UI view (fewer states, no cluster nodes)
 export const SIMPLE_POSITIONS = {
-  OFF:           { x: 220, y: 30 },
-  RAMP:          { x: 220, y: 140 },
-  LOCKOUT:       { x: 60,  y: 85 },
-  BATTERY_CHECK: { x: 420, y: 30 },
+  OFF:           { x: 230, y: 20 },
+  RAMP:          { x: 230, y: 130 },
+  LOCKOUT:       { x: 40,  y: 130 },
+  BATTERY_CHECK: { x: 420, y: 20 },
 };
 
 // Expanded blinky view (Advanced UI only)
@@ -67,8 +67,8 @@ export const BLINKY_POSITIONS = {
   TEMPERATURE_CHECK:  { x: 400, y: 110 },
   BEACON:             { x: 400, y: 220 },
   SOS:                { x: 100, y: 220 },
-  VOLTAGE_CONFIG:     { x: 10,  y: 200 },
-  THERMAL_CONFIG:     { x: 490, y: 200 },
+  VOLTAGE_CONFIG:     { x: 30,  y: 10 },
+  THERMAL_CONFIG:     { x: 480, y: 10 },
 };
 
 // Expanded strobe view — six modes in a hexagonal ring, off in center
@@ -99,22 +99,22 @@ export const RAMP_EXPANDED_POSITIONS = {
 
 // Expanded lockout view
 export const LOCKOUT_POSITIONS = {
-  OFF:                        { x: 30,  y: 35  },
-  LOCKOUT:                    { x: 235, y: 130 },
-  RAMP:                       { x: 440, y: 35  },
-  LOCKOUT_MOMENTARY_LOW:      { x: 95,  y: 120 },
-  LOCKOUT_MOMENTARY_MOON:     { x: 95,  y: 200 },
-  LOCKOUT_AUX_PATTERN_CONFIG: { x: 375, y: 120 },
-  LOCKOUT_AUX_COLOR_CONFIG:   { x: 375, y: 200 },
-  AUTO_LOCK_CONFIG:           { x: 235, y: 295 },
+  OFF:                        { x: 130,  y: 50  },
+  LOCKOUT:                    { x: 235, y: 150 },
+  RAMP:                       { x: 340, y: 50  },
+  LOCKOUT_MOMENTARY_LOW:      { x: 130, y: 250 },
+  LOCKOUT_MOMENTARY_MOON:     { x: 340,  y: 250 },
+  LOCKOUT_AUX_PATTERN_CONFIG: { x: 405, y: 115 },
+  LOCKOUT_AUX_COLOR_CONFIG:   { x: 405, y: 185 },
+  AUTO_LOCK_CONFIG:           { x: 65, y: 150 },
 };
 
 // Expanded tactical mode view
 export const TACTICAL_POSITIONS = {
-  OFF:              { x: 30,  y: 90  },
-  TACTICAL_MODE:    { x: 215, y: 110 },
-  TACTICAL_SLOT_1:  { x: 400, y: 35  },
-  TACTICAL_SLOT_2:  { x: 400, y: 115 },
-  TACTICAL_SLOT_3:  { x: 400, y: 195 },
-  TACTICAL_CONFIG:  { x: 30,  y: 180 },
+  OFF:              { x: 40,  y: 65  },
+  TACTICAL_MODE:    { x: 225, y: 120 },
+  TACTICAL_SLOT_1:  { x: 425, y: 45  },
+  TACTICAL_SLOT_2:  { x: 425, y: 120 },
+  TACTICAL_SLOT_3:  { x: 425, y: 195 },
+  TACTICAL_CONFIG:  { x: 40,  y: 180 },
 };

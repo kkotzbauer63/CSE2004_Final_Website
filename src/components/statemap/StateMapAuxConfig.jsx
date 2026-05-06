@@ -23,7 +23,7 @@ export function StateMapAuxPattern({ auxPatternIndex, context = "off", onGoToSta
   const isLockout = context === "lockout";
   const returnState = isLockout ? "LOCKOUT" : "OFF";
   const title = isLockout ? "Aux LED Pattern — Lockout Mode" : "Aux LED Pattern — Off Mode";
-  const returnLabel = isLockout ? "Lockout" : "Off";
+  const returnLabel = isLockout ? "Back to Lockout" : "Back to Off";
 
   return (
     <div className="statemap">
@@ -33,18 +33,17 @@ export function StateMapAuxPattern({ auxPatternIndex, context = "off", onGoToSta
       </div>
       <div className="statemap__container">
         <svg className="statemap__svg" viewBox="0 0 560 260" xmlns="http://www.w3.org/2000/svg">
-          {/* Back to Off */}
+          {/* Return to parent state */}
           <g
             role="button"
             style={{ cursor: "pointer" }}
             onClick={() => onGoToState(returnState)}
           >
-            <rect x="205" y="8" width="110" height="36" rx="2"
+            <rect x="190" y="8" width="140" height="36" rx="2"
               fill="#1c1c1e" stroke="#D4A84B" strokeWidth="1.5" />
             <text x="260" y="31" textAnchor="middle" dominantBaseline="middle"
               className="statemap__node-label" fill="#D4A84B">{returnLabel}</text>
           </g>
-          <text x="260" y="56" textAnchor="middle" className="statemap__edge-label">← 1C</text>
 
           {/* Pattern option cards */}
           {AUX_PATTERNS.map((pattern, i) => {
@@ -128,7 +127,7 @@ export function StateMapAuxColor({ auxColorIndex, context = "off", onGoToState, 
   const isLockout = context === "lockout";
   const returnState = isLockout ? "LOCKOUT" : "OFF";
   const title = isLockout ? "Aux LED Color — Lockout Mode" : "Aux LED Color — Off Mode";
-  const returnLabel = isLockout ? "Lockout" : "Off";
+  const returnLabel = isLockout ? "Back to Lockout" : "Back to Off";
 
   return (
     <div className="statemap">
@@ -138,18 +137,17 @@ export function StateMapAuxColor({ auxColorIndex, context = "off", onGoToState, 
       </div>
       <div className="statemap__container">
         <svg className="statemap__svg" viewBox="0 0 620 300" xmlns="http://www.w3.org/2000/svg">
-          {/* Back to Off */}
+          {/* Return to parent state */}
           <g
             role="button"
             style={{ cursor: "pointer" }}
             onClick={() => onGoToState(returnState)}
           >
-            <rect x="255" y="8" width="110" height="36" rx="2"
+            <rect x="240" y="8" width="140" height="36" rx="2"
               fill="#1c1c1e" stroke="#D4A84B" strokeWidth="1.5" />
             <text x="310" y="31" textAnchor="middle" dominantBaseline="middle"
               className="statemap__node-label" fill="#D4A84B">{returnLabel}</text>
           </g>
-          <text x="310" y="57" textAnchor="middle" className="statemap__edge-label">← 1C</text>
 
           {/* Color swatches — 5 per row */}
           {AUX_COLORS.map((color, i) => {
@@ -211,11 +209,8 @@ export function StateMapAuxColor({ auxColorIndex, context = "off", onGoToState, 
           })}
 
           {/* Cycle instruction */}
-          <text x="310" y="268" textAnchor="middle" className="statemap__edge-label">
-            7H — next color
-          </text>
-          <text x="310" y="284" textAnchor="middle" style={{ fontSize: "10px", fill: "#555" }}>
-            Press 7H repeatedly to cycle · click a swatch to jump
+          <text x="310" y="276" textAnchor="middle" style={{ fontSize: "10px", fill: "#555" }}>
+            Keep holding the button to cycle to the next color. Release to select the color
           </text>
         </svg>
       </div>

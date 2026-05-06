@@ -37,6 +37,13 @@ function getItemCount(node) {
   return 1;
 }
 
+const AUX_PATTERN_CONFIG_STATES = new Set(["AUX_PATTERN_CONFIG", "LOCKOUT_AUX_PATTERN_CONFIG"]);
+const AUX_COLOR_CONFIG_STATES   = new Set(["AUX_COLOR_CONFIG", "LOCKOUT_AUX_COLOR_CONFIG"]);
+
+function auxConfigReturnState(state) {
+  return state.startsWith("LOCKOUT_") ? "LOCKOUT" : "OFF";
+}
+
 export default function App() {
   const {
     currentState,
@@ -111,15 +118,22 @@ export default function App() {
 
   // Keep a ref to isButtonPressed so the effect can read it without re-running
   const isButtonPressedRef = useRef(false);
-  isButtonPressedRef.current = isButtonPressed;
 
   // Track level in a ref to read current value inside sunset interval without stale closure
   const levelRef = useRef(level);
-  levelRef.current = level;
 
   // Capture which menu was entered and the ramp style at entry time
   // so the completion callback can apply results to the right config.
   const menuEntryRef = useRef({ menuState: null, rampStyle: "smooth" });
+  const auxMenuEnteredByButtonRef = useRef(false);
+
+  useEffect(() => {
+    isButtonPressedRef.current = isButtonPressed;
+  }, [isButtonPressed]);
+
+  useEffect(() => {
+    levelRef.current = level;
+  }, [level]);
 
   // Start the config menu whenever we enter a CONFIG_MENU state
   useEffect(() => {
@@ -216,14 +230,51 @@ export default function App() {
     };
   }, [currentState, isButtonPressed, doSunsetBlink]);
 
-  // ── Aux color hold-cycling ───────────────────────────────────────────────
-  // While in AUX_COLOR_CONFIG with the button still held, advance one color
-  // every second (mirrors Anduril's hold-to-scroll behavior).
+  // Track whether aux menus were reached by a real flashlight input or by
+  // clicking the state map. Button-entered menus have short-lived behavior.
   useEffect(() => {
-    if (currentState !== "AUX_COLOR_CONFIG" || !isButtonPressed) return;
+    const inAuxMenu = AUX_PATTERN_CONFIG_STATES.has(currentState) || AUX_COLOR_CONFIG_STATES.has(currentState);
+    if (!inAuxMenu) {
+      auxMenuEnteredByButtonRef.current = false;
+      return;
+    }
+
+    const lastEntry = history[history.length - 1];
+    if (lastEntry?.to === currentState && lastEntry.from !== currentState) {
+      auxMenuEnteredByButtonRef.current = lastEntry.input !== "jump";
+    }
+  }, [currentState, history]);
+
+  // ── Aux color hold-cycling ───────────────────────────────────────────────
+  // While in an aux color menu with the button still held, advance one color
+  // every second. If the button opened the menu, release returns to the parent.
+  useEffect(() => {
+    if (!AUX_COLOR_CONFIG_STATES.has(currentState) || !isButtonPressed) return;
     const id = setInterval(() => handleInput("7H"), 1000);
     return () => clearInterval(id);
   }, [currentState, isButtonPressed, handleInput]);
+
+  useEffect(() => {
+    if (!AUX_COLOR_CONFIG_STATES.has(currentState)) return;
+    if (!auxMenuEnteredByButtonRef.current || isButtonPressed) return;
+
+    const returnState = auxConfigReturnState(currentState);
+    auxMenuEnteredByButtonRef.current = false;
+    goToState(returnState);
+  }, [currentState, isButtonPressed, goToState]);
+
+  // Button-entered aux pattern config is displayed briefly, then returns.
+  useEffect(() => {
+    if (!AUX_PATTERN_CONFIG_STATES.has(currentState) || !auxMenuEnteredByButtonRef.current) return;
+
+    const returnState = auxConfigReturnState(currentState);
+    const id = setTimeout(() => {
+      auxMenuEnteredByButtonRef.current = false;
+      goToState(returnState);
+    }, 2000);
+
+    return () => clearTimeout(id);
+  }, [currentState, goToState]);
 
   // ── Button handler routing ───────────────────────────────────────────────
   // When a config menu is active, raw press/release events go to useConfigMenu.

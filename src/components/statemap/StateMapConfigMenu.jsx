@@ -75,7 +75,7 @@ export default function StateMapConfigMenu({ node, onGoToState, rampStyle = "smo
             style={{ fontSize: "18px", fill: "#aaa", fontFamily: "monospace", fontWeight: "bold" }}>
             {node.enteredVia}
           </text>
-          <text x="98" y="48"
+          <text x={30 + 10 * (node.enteredVia?.length ?? 0)} y="48"
             style={{ fontSize: "11px", fill: "#666" }}>
             from {fromNode?.name ?? node.enteredFrom}
           </text>
@@ -94,14 +94,11 @@ export default function StateMapConfigMenu({ node, onGoToState, rampStyle = "smo
           <g role="button" style={{ cursor: "pointer" }} onClick={() => onGoToState(returnsTo)}>
             <rect x="386" y="22" width="220" height="32" rx="2"
               fill="#1c1c1e" stroke="#8B8B8B" strokeWidth="1.5" />
-            <text x="496" y="42" textAnchor="middle" dominantBaseline="middle"
+            <text x="496" y="39" textAnchor="middle" dominantBaseline="middle"
               className="statemap__node-label" fill="#bbb">
               ← {returnsNode?.name ?? returnsTo}
             </text>
           </g>
-          <text x="496" y="68" textAnchor="middle" className="statemap__edge-label">
-            1C — exit config
-          </text>
 
           {/* ── Guide section title ─────────────────────────────────────── */}
           <text x="310" y={GUIDE_TOP + 12} textAnchor="middle"
@@ -116,10 +113,10 @@ export default function StateMapConfigMenu({ node, onGoToState, rampStyle = "smo
             style={{ fontSize: "9px", fill: "#D4A84B", fontFamily: "monospace" }}>
             ① PRESENTING
           </text>
-          <text x={BOX1_X + 8} y={BOX_Y + 28} style={{ fontSize: "8.5px", fill: "#777" }}>Light blinks once per item</text>
-          <text x={BOX1_X + 8} y={BOX_Y + 41} style={{ fontSize: "8.5px", fill: "#777" }}>Hold = skip this item</text>
-          <text x={BOX1_X + 8} y={BOX_Y + 54} style={{ fontSize: "8.5px", fill: "#777" }}>Release = configure item</text>
-          <text x={BOX1_X + 8} y={BOX_Y + 70} style={{ fontSize: "8px", fill: "#444", fontStyle: "italic" }}>repeats for all items</text>
+          <text x={BOX1_X + 8} y={BOX_Y + 30} style={{ fontSize: "8.5px", fill: "#777" }}>Light blinks once per item</text>
+          <text x={BOX1_X + 8} y={BOX_Y + 43} style={{ fontSize: "8.5px", fill: "#777" }}>Hold = skip this item</text>
+          <text x={BOX1_X + 8} y={BOX_Y + 56} style={{ fontSize: "8.5px", fill: "#777" }}>Release = configure item</text>
+          <text x={BOX1_X + 8} y={BOX_Y + 69} style={{ fontSize: "8px", fill: "#444", fontStyle: "italic" }}>repeats for all items</text>
 
           {/* ── Box 2: Accepting ───────────────────────────────────────── */}
           <rect x={BOX2_X} y={BOX_Y} width={BOX_W} height={BOX_H} rx="2"
@@ -128,10 +125,10 @@ export default function StateMapConfigMenu({ node, onGoToState, rampStyle = "smo
             style={{ fontSize: "9px", fill: "#7aadff", fontFamily: "monospace" }}>
             ② ACCEPTING
           </text>
-          <text x={BOX2_X + 8} y={BOX_Y + 28} style={{ fontSize: "8.5px", fill: "#777" }}>Click = +1 to counter</text>
-          <text x={BOX2_X + 8} y={BOX_Y + 41} style={{ fontSize: "8.5px", fill: "#777" }}>Hold = +10 to counter</text>
-          <text x={BOX2_X + 8} y={BOX_Y + 54} style={{ fontSize: "8.5px", fill: "#777" }}>No input 3s = confirm value</text>
-          <text x={BOX2_X + 8} y={BOX_Y + 70} style={{ fontSize: "8px", fill: "#444", fontStyle: "italic" }}>counter starts at 0</text>
+          <text x={BOX2_X + 8} y={BOX_Y + 30} style={{ fontSize: "8.5px", fill: "#777" }}>Click = +1 to counter</text>
+          <text x={BOX2_X + 8} y={BOX_Y + 43} style={{ fontSize: "8.5px", fill: "#777" }}>Hold = +10 to counter</text>
+          <text x={BOX2_X + 8} y={BOX_Y + 56} style={{ fontSize: "8.5px", fill: "#777" }}>No input 3s = confirm value</text>
+          <text x={BOX2_X + 8} y={BOX_Y + 69} style={{ fontSize: "8px", fill: "#444", fontStyle: "italic" }}>counter starts at 0</text>
 
           {/* ── Box 3: Complete ────────────────────────────────────────── */}
           <rect x={BOX3_X} y={BOX_Y} width={BOX_W} height={BOX_H} rx="2"
@@ -140,12 +137,12 @@ export default function StateMapConfigMenu({ node, onGoToState, rampStyle = "smo
             style={{ fontSize: "9px", fill: "#888", fontFamily: "monospace" }}>
             ③ COMPLETE
           </text>
-          <text x={BOX3_X + 8} y={BOX_Y + 28} style={{ fontSize: "8.5px", fill: "#777" }}>
+          <text x={BOX3_X + 8} y={BOX_Y + 30} style={{ fontSize: "8.5px", fill: "#777" }}>
             Returns to {returnsNode?.name ?? returnsTo}
           </text>
-          <text x={BOX3_X + 8} y={BOX_Y + 41} style={{ fontSize: "8.5px", fill: "#777" }}>1C to exit early</text>
-          <text x={BOX3_X + 8} y={BOX_Y + 54} style={{ fontSize: "8.5px", fill: "#555" }}>Skipped items keep</text>
-          <text x={BOX3_X + 8} y={BOX_Y + 68} style={{ fontSize: "8.5px", fill: "#555" }}>current/default values.</text>
+          <text x={BOX3_X + 8} y={BOX_Y + 43} style={{ fontSize: "8.5px", fill: "#777" }}>1C to exit early</text>
+          <text x={BOX3_X + 8} y={BOX_Y + 56} style={{ fontSize: "8.5px", fill: "#555" }}>Skipped items keep</text>
+          <text x={BOX3_X + 8} y={BOX_Y + 69} style={{ fontSize: "8.5px", fill: "#555" }}>current/default values.</text>
 
           {/* ── Item list ──────────────────────────────────────────────── */}
           {items.map((item, i) => {
@@ -169,22 +166,22 @@ export default function StateMapConfigMenu({ node, onGoToState, rampStyle = "smo
                   {item.name}
                 </text>
                 {/* Default value */}
-                <text x="52" y={iy + 30}
+                <text x="52" y={iy + 29}
                   style={{ fontSize: "9px", fill: "#666", fontFamily: "monospace" }}>
                   default: {String(item.default)}
                 </text>
                 {/* Value scheme */}
-                <text x="52" y={iy + 42} style={{ fontSize: "8.5px", fill: "#484848" }}>
+                <text x="52" y={iy + 40} style={{ fontSize: "8.5px", fill: "#484848" }}>
                   {item.valueScheme}
                 </text>
                 {/* Alt variant note (RAMP_CONFIG smooth vs stepped) */}
                 {alt && (
                   <>
-                    <text x="606" y={iy + 16} textAnchor="end"
+                    <text x="596" y={iy + 19} textAnchor="end"
                       style={{ fontSize: "9px", fill: "#555", fontStyle: "italic" }}>
                       {alt.label}: {alt.name}
                     </text>
-                    <text x="606" y={iy + 30} textAnchor="end"
+                    <text x="596" y={iy + 33} textAnchor="end"
                       style={{ fontSize: "8.5px", fill: "#444", fontFamily: "monospace" }}>
                       default: {String(alt.default)}
                     </text>

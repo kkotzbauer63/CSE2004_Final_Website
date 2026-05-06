@@ -74,12 +74,12 @@ export const BLINKY_POSITIONS = {
 // Expanded strobe view — six modes in a hexagonal ring, off in center
 export const STROBE_POSITIONS = {
   OFF:              { x: 210, y: 130 },
-  PARTY_STROBE:     { x: 210, y: 10  },
-  TACTICAL_STROBE:  { x: 370, y: 70  },
-  POLICE_STROBE:    { x: 370, y: 190 },
-  LIGHTNING:        { x: 210, y: 250 },
-  CANDLE:           { x: 50,  y: 190 },
-  BIKE_FLASHER:     { x: 50,  y: 70  },
+  PARTY_STROBE:     { x: 210, y: 40  },
+  TACTICAL_STROBE:  { x: 370, y: 75  },
+  POLICE_STROBE:    { x: 370, y: 185 },
+  LIGHTNING:        { x: 210, y: 210 },
+  CANDLE:           { x: 50,  y: 185 },
+  BIKE_FLASHER:     { x: 50,  y: 75  },
 };
 
 // Expanded ramp view — ramp bar plus surrounding nodes

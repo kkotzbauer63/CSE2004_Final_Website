@@ -56,13 +56,13 @@ export default function StateMapStrobe({ currentState, visibleStates, reachableF
       <div className="statemap__container">
         <svg className="statemap__svg" viewBox="0 0 540 360" xmlns="http://www.w3.org/2000/svg">
           <ArrowDef />
-          <rect x="30" y="50" width="480" height="230" rx="4" fill="none" stroke="#2a2a2c" strokeWidth="1" strokeDasharray="4 4" />
-          <text x="270" y="300" textAnchor="middle" className="statemap__ring-label">2C / 4C cycles through modes</text>
+          <rect x="30" y="20" width="480" height="250" rx="4" fill="none" stroke="#2a2a2c" strokeWidth="1" strokeDasharray="4 4" />
+          <text x="270" y="285" textAnchor="middle" className="statemap__ring-label">2C / 4C cycles through modes</text>
           {selfActions.map((action, i) => (
             <StrobeActionBox
               key={action.action}
-              x={60 + i * 155}
-              y={318}
+              x={45 + i * 155}
+              y={300}
               action={action.action}
               description={action.description}
               onClick={() => onInput?.(action.action)}

@@ -48,7 +48,7 @@ export const STROBE_MODE_DEFINITIONS = {
     increaseLabel: "Brighter",
     decreaseLabel: "Dimmer",
     extraActions: [
-      { action: "5H", target: "_self", description: "Sunset timer: start / add 5 min" },
+      { action: "5H", target: "_self", description: "Sunset timer" },
     ],
   },
   BIKE_FLASHER: {

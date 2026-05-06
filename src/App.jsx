@@ -3,6 +3,7 @@ import { useStateMachine } from "./hooks/useStateMachine.js";
 import { useButtonInput } from "./hooks/useButtonInput.js";
 import { useReadout } from "./hooks/useReadout.js";
 import { useConfigMenu } from "./hooks/useConfigMenu.js";
+import { useStrobePlayback } from "./hooks/useStrobePlayback.js";
 import {
   encodeVoltage,
   encodeTemperature,
@@ -239,13 +240,15 @@ export default function App() {
 
   const activeButtonHandlers = configActive ? configButtonHandlers : buttonHandlers;
   const activeIsButtonPressed = configActive ? configBtnPressed : isButtonPressed;
+  const strobePlayback = useStrobePlayback(currentState, level);
 
   // ── Brightness override priority ─────────────────────────────────────────
-  // Config menu > readout > sunset blink > normal state brightness
+  // Config menu > readout > sunset blink > strobe animation > normal state brightness
   const overrideLevel =
     configActive      ? configLevel :
     readoutPlaying    ? readoutLevel :
     sunsetBlink       ? 0 :
+    strobePlayback.level !== null ? strobePlayback.level :
     null;
 
   // ── Transitions for panel (exclude state-map-only entries) ─────────────
@@ -301,7 +304,7 @@ export default function App() {
             buttonHandlers={activeButtonHandlers}
             isButtonPressed={activeIsButtonPressed}
             pendingInput={configActive ? null : pendingInput}
-            auxDisplay={auxDisplay}
+            auxDisplay={strobePlayback.auxDisplay ?? auxDisplay}
             readoutLevel={overrideLevel}
             configInfo={configInfo}
           />

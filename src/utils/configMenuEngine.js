@@ -43,6 +43,7 @@ export const CM_LEVEL = Object.freeze({
 
 // ── Timing (milliseconds) ─────────────────────────────────────────────────────
 export const CM_TIMING = Object.freeze({
+  ENTRY_OFF:       200,   // brief off dip before the first entry flash
   BLINK_ON:        100,   // on-time of each option presentation flash
   FIRST_BLINK_GAP: 2500,  // gap after option 1 flash before option 2
   BLINK_GAP:       1500,  // gap after later option flashes

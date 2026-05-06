@@ -113,36 +113,48 @@ export function useConfigMenu() {
     setItemIndex(session.itemIndex);
     setCurrentValue(0);
 
-    // One quick flash per option. Clicking during the following gap selects it.
+    // One quick flash per option. The first option starts with a short off dip
+    // so the entry cue is visible even when entering from a high ramp level.
     presentationFlashActiveRef.current = true;
     acceptAfterFlashRef.current = false;
-    setConfigLevel(CM_LEVEL.BLINK);
+    setConfigLevel(CM_LEVEL.ITEM);
 
-    blinkTimerRef.current = setTimeout(() => {
+    const showOptionFlash = () => {
       if (sessionRef.current?.phase !== CM_PHASE.PRESENTING) return;
-      presentationFlashActiveRef.current = false;
-      setConfigLevel(CM_LEVEL.ITEM);
-      blinkTimerRef.current = null;
+      setConfigLevel(CM_LEVEL.BLINK);
 
-      if (acceptAfterFlashRef.current) {
-        acceptAfterFlashRef.current = false;
-        startAccepting();
-        return;
-      }
+      blinkTimerRef.current = setTimeout(() => {
+        if (sessionRef.current?.phase !== CM_PHASE.PRESENTING) return;
+        presentationFlashActiveRef.current = false;
+        setConfigLevel(CM_LEVEL.ITEM);
+        blinkTimerRef.current = null;
 
-      const gap = session.itemIndex === 0 ? CM_TIMING.FIRST_BLINK_GAP : CM_TIMING.BLINK_GAP;
-      presentTimerRef.current = setTimeout(() => {
-        const s = sessionRef.current;
-        if (!s || s.phase !== CM_PHASE.PRESENTING) return;
-        s.skip();
-        setItemIndex(s.itemIndex);
-        if (s.isDone()) {
-          finish();
-        } else {
-          startPresenting(s);
+        if (acceptAfterFlashRef.current) {
+          acceptAfterFlashRef.current = false;
+          startAccepting();
+          return;
         }
-      }, gap);
-    }, CM_TIMING.BLINK_ON);
+
+        const gap = session.itemIndex === 0 ? CM_TIMING.FIRST_BLINK_GAP : CM_TIMING.BLINK_GAP;
+        presentTimerRef.current = setTimeout(() => {
+          const s = sessionRef.current;
+          if (!s || s.phase !== CM_PHASE.PRESENTING) return;
+          s.skip();
+          setItemIndex(s.itemIndex);
+          if (s.isDone()) {
+            finish();
+          } else {
+            startPresenting(s);
+          }
+        }, gap);
+      }, CM_TIMING.BLINK_ON);
+    };
+
+    if (session.itemIndex === 0) {
+      blinkTimerRef.current = setTimeout(showOptionFlash, CM_TIMING.ENTRY_OFF);
+    } else {
+      showOptionFlash();
+    }
   }
 
   /**

@@ -100,8 +100,8 @@ export function useStateMachine(initialState = "OFF") {
   // Momentary-state tracking: when a momentary transition fires, store the return point
   const momentaryReturnRef = useRef(null); // { state: string, level: number } | null
 
-  // Memory: level recalled by 1C from OFF. null = use floor (no memory set yet).
-  const memorizedLevelRef = useRef(null);
+  // Memory: level recalled by 1C from OFF. Anduril's default memorized level is mid-ramp.
+  const memorizedLevelRef = useRef(75);
 
   // Track last-used strobe child so STROBE_GROUP resolves correctly on re-entry
   const lastUsedStrobe = useRef(null);
@@ -134,7 +134,7 @@ export function useStateMachine(initialState = "OFF") {
     setAuxLockout({ pattern: 1, color: 0 });
     setAdvancedConfig({ ...DEFAULT_ADVANCED_CONFIG });
     setSimpleConfig({ ...DEFAULT_SIMPLE_CONFIG });
-    memorizedLevelRef.current = null;
+    memorizedLevelRef.current = 75;
   }, [currentState]);
 
   // ── Main input handler ────────────────────────────────────────────────────

@@ -3,6 +3,13 @@ import "./FlashlightSimulator.css";
 import { CM_PHASE } from "../utils/configMenuEngine.js";
 import { DISCO_CYCLE_HEX, levelToPercent } from "../hooks/useStateMachine.js";
 
+const AUX_BLINK_SEQUENCE = [2, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1];
+
+function auxLevelToOpacity(auxLevel) {
+  if (auxLevel <= 0) return 0;
+  return auxLevel === 1 ? 0.33 : 1;
+}
+
 export default function FlashlightSimulator({
   stateInfo,
   brightness,
@@ -52,6 +59,7 @@ export default function FlashlightSimulator({
   const isDiscoMode   = auxDisplay?.colorName === "disco";
   const isRainbowMode = auxDisplay?.colorName === "rainbow";
   const [animColorIdx, setAnimColorIdx] = useState(0);
+  const [auxBlinkFrame, setAuxBlinkFrame] = useState(0);
   useEffect(() => {
     if (!isDiscoMode && !isRainbowMode) return;
     const ms = isDiscoMode ? 250 : 1000;
@@ -64,20 +72,35 @@ export default function FlashlightSimulator({
     ? DISCO_CYCLE_HEX[animColorIdx]
     : (auxDisplay?.color ?? null);   // hex or null
   const auxPattern = auxDisplay?.pattern ?? null; // "off"|"low"|"high"|"blinking"|null
+  const isBlinking = !isOn && auxPattern === "blinking";
 
-  // Button face: pressed → dark; on → amber; aux pattern off → neutral; else → aux color
+  useEffect(() => {
+    if (!isBlinking) return;
+
+    const id = setInterval(
+      () => setAuxBlinkFrame((frame) => (frame + 1) % AUX_BLINK_SEQUENCE.length),
+      100,
+    );
+    return () => clearInterval(id);
+  }, [isBlinking]);
+
+  const auxLevel =
+    !auxColor || auxPattern === "off" ? 0 :
+    auxPattern === "low" ? 1 :
+    auxPattern === "blinking" ? AUX_BLINK_SEQUENCE[auxBlinkFrame] :
+    2;
+  const auxOpacity = isOn ? 0 : auxLevelToOpacity(auxLevel);
+  const showAux = auxOpacity > 0;
+
+  // Button face: pressed → dark; on → amber; off → neutral, with aux layered above it.
   const buttonFill =
     isButtonPressed ? "#555"
     : isOn          ? "#D4A84B"
-    : (!auxColor || auxPattern === "off") ? "#d8d8d8"
-    : auxColor;
+    : "#d8d8d8";
 
   // Ring matches button color
-  const ringStroke  = isOn ? "#D4A84B" : (auxColor ?? "#a2e4ff");
-  const ringOpacity = isOn ? 0.9 : auxPattern === "low" ? 0.45 : 0.85;
-
-  // Add blinking class when aux is in blinking pattern and light is off
-  const isBlinking  = !isOn && auxPattern === "blinking";
+  const ringStroke  = isOn ? "#D4A84B" : showAux ? auxColor : "#a2e4ff";
+  const ringOpacity = isOn ? 0.9 : showAux ? 0.25 + auxOpacity * 0.6 : 0.35;
 
   return (
     <div className="simulator">
@@ -253,17 +276,16 @@ export default function FlashlightSimulator({
             className={[
               "simulator__button-group",
               isButtonPressed ? "simulator__button-group--pressed" : "",
-              isBlinking      ? "simulator__button-group--blinking" : "",
             ].filter(Boolean).join(" ")}
             {...(buttonHandlers ?? {})}
             style={{ cursor: "pointer", touchAction: "none", userSelect: "none" }}
           >
             {/* Soft glow behind button */}
-            {(isOn || auxColor) && (
+            {(isOn || showAux) && (
               <circle
                 cx="100" cy="100" r="27"
                 fill={isOn ? "#D4A84B" : auxColor}
-                opacity="0.18"
+                opacity={isOn ? 0.18 : 0.18 * auxOpacity}
                 pointerEvents="none"
               />
             )}
@@ -276,6 +298,14 @@ export default function FlashlightSimulator({
               stroke="#aaa"
               strokeWidth="0.5"
             />
+            {showAux && (
+              <circle
+                cx="100" cy="100" r="22"
+                fill={auxColor}
+                opacity={auxOpacity}
+                pointerEvents="none"
+              />
+            )}
             {/* Indicator ring — shows aux color or amber */}
             <circle
               cx="100" cy="100" r="23"

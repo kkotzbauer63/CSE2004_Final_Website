@@ -161,6 +161,13 @@ export function useStateMachine(initialState = "OFF") {
     setSimpleConfig({ ...DEFAULT_SIMPLE_CONFIG });
     setTacticalSlots([...DEFAULT_TACTICAL_SLOTS]);
     memorizedLevelRef.current = 75;
+    const id = setTimeout(() => {
+      setCurrentState("OFF");
+      setLevel(0);
+      setLastAction("Factory reset complete");
+    }, 3000);
+
+    return () => clearTimeout(id);
   }, [currentState]);
 
   // ── Main input handler ────────────────────────────────────────────────────

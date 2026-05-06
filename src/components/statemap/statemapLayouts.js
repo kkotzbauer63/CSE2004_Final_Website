@@ -58,6 +58,8 @@ export const SIMPLE_POSITIONS = {
   RAMP:          { x: 230, y: 130 },
   LOCKOUT:       { x: 40,  y: 130 },
   BATTERY_CHECK: { x: 420, y: 20 },
+  FACTORY_RESET: { x: 40,  y: 75 },
+  VERSION_CHECK: { x: 420, y: 75 },
 };
 
 // Expanded blinky view (Advanced UI only)

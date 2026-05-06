@@ -17,15 +17,14 @@ export const VERSION_CHECK = {
   ],
 };
 
-// FACTORY_RESET is now a persistent state (not auto-returning).
-// The hook performs the reset on entry; the user exits with 1C.
+// The hook performs the reset on entry, then returns to Off after the reset window.
 export const FACTORY_RESET = {
   id: "FACTORY_RESET",
   name: "Factory Reset",
   ui: UI.ANY,
   type: NODE_TYPE.STATE,
   parent: null,
-  description: "Resets all settings to defaults. Simple UI is re-enabled. Press 1C to return to Off.",
+  description: "Resets all settings to defaults. Simple UI is re-enabled, then returns to Off.",
   exitMethod: null,
   group: "special",
   brightness: 0,

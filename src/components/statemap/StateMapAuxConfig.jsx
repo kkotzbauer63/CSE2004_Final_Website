@@ -39,9 +39,9 @@ export function StateMapAuxPattern({ auxPatternIndex, context = "off", onGoToSta
             style={{ cursor: "pointer" }}
             onClick={() => onGoToState(returnState)}
           >
-            <rect x="190" y="8" width="140" height="36" rx="2"
+            <rect x="210" y="8" width="140" height="36" rx="2"
               fill="#1c1c1e" stroke="#D4A84B" strokeWidth="1.5" />
-            <text x="260" y="31" textAnchor="middle" dominantBaseline="middle"
+            <text x="280" y="27" textAnchor="middle" dominantBaseline="middle"
               className="statemap__node-label" fill="#D4A84B">{returnLabel}</text>
           </g>
 
@@ -73,11 +73,6 @@ export function StateMapAuxPattern({ auxPatternIndex, context = "off", onGoToSta
                   fill={isActive ? "#D4A84B" : "#555"}
                   opacity={pattern === "off" ? 0.2 : isActive ? 1 : 0.4}
                 />
-                {pattern === "blinking" && (
-                  <text x={x + 55} y={y + 28} textAnchor="middle"
-                    dominantBaseline="middle" fill={isActive ? "#D4A84B" : "#888"}
-                    style={{ fontSize: "9px" }}>blink</text>
-                )}
                 <text x={x + 55} y={y + 46} textAnchor="middle"
                   dominantBaseline="middle"
                   className="statemap__node-label"
@@ -104,7 +99,7 @@ export function StateMapAuxPattern({ auxPatternIndex, context = "off", onGoToSta
           {/* Legend: current selection */}
           <rect x="175" y="210" width="210" height="30" rx="2"
             fill="#1a1a1a" stroke="#333" strokeWidth="1" />
-          <text x="280" y="229" textAnchor="middle" dominantBaseline="middle"
+          <text x="280" y="226" textAnchor="middle" dominantBaseline="middle"
             style={{ fontSize: "11px", fill: "#888", fontFamily: "monospace" }}>
             CURRENT: {PATTERN_LABELS[currentPattern].toUpperCase()}
           </text>
@@ -145,7 +140,7 @@ export function StateMapAuxColor({ auxColorIndex, context = "off", onGoToState, 
           >
             <rect x="240" y="8" width="140" height="36" rx="2"
               fill="#1c1c1e" stroke="#D4A84B" strokeWidth="1.5" />
-            <text x="310" y="31" textAnchor="middle" dominantBaseline="middle"
+            <text x="310" y="27.5" textAnchor="middle" dominantBaseline="middle"
               className="statemap__node-label" fill="#D4A84B">{returnLabel}</text>
           </g>
 
@@ -176,7 +171,7 @@ export function StateMapAuxColor({ auxColorIndex, context = "off", onGoToState, 
                   strokeWidth={isActive ? 2 : 1}
                 />
                 {/* Color dot */}
-                <circle cx={x + 52} cy={y + 22} r="12"
+                <circle cx={x + 52} cy={y + 28} r="12"
                   fill={isAnimated ? "none" : hex}
                   stroke={isAnimated ? hex : "none"}
                   strokeWidth={isAnimated ? 2 : 0}
@@ -186,19 +181,19 @@ export function StateMapAuxColor({ auxColorIndex, context = "off", onGoToState, 
                   <>
                     {DISCO_CYCLE_HEX.slice(0, 3).map((c, ci) => (
                       <circle key={ci}
-                        cx={x + 38 + ci * 9} cy={y + 22} r="3"
+                        cx={x + 43 + ci * 9} cy={y + 28} r="3"
                         fill={c} opacity={0.8} />
                     ))}
                   </>
                 )}
-                <text x={x + 52} y={y + 44} textAnchor="middle"
+                <text x={x + 52} y={y + 51} textAnchor="middle"
                   dominantBaseline="middle"
                   className="statemap__node-label"
                   fill={isActive ? hex : "#888"}>
                   {color.charAt(0).toUpperCase() + color.slice(1)}
                 </text>
                 {isAnimated && (
-                  <text x={x + 52} y={y + 58} textAnchor="middle"
+                  <text x={x + 52} y={y + 62} textAnchor="middle"
                     dominantBaseline="middle"
                     style={{ fontSize: "8px", fill: isActive ? "#888" : "#444" }}>
                     {color === "disco" ? "0.25 s" : "1 s"}

@@ -167,8 +167,8 @@ export const MISC_CONFIG = {
   enteredVia: "9H",
   returnsTo: "OFF",
   menuItems: [
-    { position: 1, name: "Tint ramp style",  default: 0, valueScheme: "0 = smooth, 1 = middle only, 2 = extremes only, 3+ = N steps" },
-    { position: 2, name: "Jump start level", default: 0, valueScheme: "ramp level 1–150 for low-level startup pulse (0 = off)" },
+     { position: 1, name: "Tint ramp style (not available on this single channel light)",  default: 0, valueScheme: "0 = smooth, 1 = middle only, 2 = extremes only, 3+ = N steps" },
+    { position: 2, name: "Jump start level (not needed for most lights)", default: 0, valueScheme: "ramp level 1–150 for low-level startup pulse (0 = off)" },
   ],
   transitions: [
     { action: "1C", target: "OFF", ui: UI.FULL, kind: TRANSITION_KIND.NAVIGATE, description: "Exit config (return to Off)", condition: null },

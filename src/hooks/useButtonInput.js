@@ -42,7 +42,7 @@ export function useButtonInput({ handleInput, startRamp, stopRamp, stopMomentary
         const result = handleInputRef.current(inputStr);
         // If the matched transition has a ramp direction, start continuous ramping
         if (result?.transition?.rampEffect) {
-          startRampRef.current(result.transition.rampEffect);
+          startRampRef.current(result.transition.rampEffect, result.transition);
         }
       },
       onHoldEnd: () => {

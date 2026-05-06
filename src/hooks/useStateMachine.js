@@ -42,8 +42,11 @@ export const DISCO_CYCLE_HEX = ["#ff3333", "#ffaa00", "#33ff33", "#00dddd", "#33
 // Anduril brightness: levels 1–150
 const MAX_LEVEL = 150;
 const MIN_LEVEL = 1;
-const RAMP_INTERVAL_MS    = 17;  // ~60fps smooth ramp
 const STEPPED_INTERVAL_MS = 500; // 0.5s between steps in stepped mode
+const SMOOTH_STEP_SPEED = 6;
+const RAMP_REVERSE_WINDOW_MS = 1000;
+const SIMULATED_BATTERY_VOLTAGE = 4.16;
+const BUTTON_AUX_COLOR = "#D4A84B";
 
 // Convert Anduril level (1–150) to a 0–100 percentage for the visual
 export function levelToPercent(level) {
@@ -58,6 +61,7 @@ const AUX_LOCKOUT_STATES = new Set(["LOCKOUT", "LOCKOUT_AUX_PATTERN_CONFIG", "LO
 
 // States where brightness should be preserved on navigation
 const RAMP_LIKE_STATES = new Set(["RAMP", "SUNSET_TIMER"]);
+const MEMORIZED_BLINKY_STATES = new Set(["BEACON", "SOS"]);
 const TACTICAL_SLOT_IDS = ["TACTICAL_SLOT_1", "TACTICAL_SLOT_2", "TACTICAL_SLOT_3"];
 const DEFAULT_TACTICAL_SLOTS = [120, 60, 152];
 
@@ -79,6 +83,57 @@ function closestStepLevel(level, cfg) {
   ), steps[0] ?? cfg.floorLevel);
 }
 
+function rampIntervalMs(cfg) {
+  const floor = Math.max(1, Math.min(MAX_LEVEL, cfg.floorLevel));
+  const ceil = Math.max(floor, Math.min(MAX_LEVEL, cfg.ceilLevel));
+  const levels = Math.max(1, ceil - floor);
+  const durationMs = Math.max(1, Math.min(4, cfg.rampSpeed || 1)) * 2500;
+  return Math.max(1, durationMs / levels);
+}
+
+function applyRampConfigUpdates(prev, updates) {
+  const next = { ...prev };
+
+  for (const [key, value] of Object.entries(updates)) {
+    if (value === undefined) continue;
+
+    if (key === "floorLevel") {
+      if (value > next.ceilLevel || value > next.turboLevel) continue;
+    } else if (key === "ceilLevel") {
+      if (value < next.floorLevel || value > next.turboLevel) continue;
+    } else if (key === "turboLevel") {
+      if (value < next.floorLevel || value < next.ceilLevel) continue;
+    }
+
+    next[key] = value;
+  }
+
+  return next;
+}
+
+function voltageToAuxColor(voltage) {
+  if (voltage < 3.3) return "#ff3333";
+  if (voltage < 3.6) return "#ffaa00";
+  if (voltage < 3.95) return "#33cc55";
+  if (voltage < 4.1) return "#3388ff";
+  return "#9955ee";
+}
+
+function resolveAuxColor(colorName) {
+  return colorName === "voltage"
+    ? voltageToAuxColor(SIMULATED_BATTERY_VOLTAGE)
+    : AUX_COLOR_HEX[colorName];
+}
+
+function buttonAuxPatternForLevel(level, cfg) {
+  const lowLevel = Math.max(0, Math.min(MAX_LEVEL, cfg.auxLowRampLevel ?? 1));
+  const highLevel = Math.max(0, Math.min(MAX_LEVEL, cfg.auxHighRampLevel ?? 75));
+
+  if (lowLevel <= 0 || level < lowLevel) return "off";
+  if (highLevel > 0 && level >= highLevel) return "high";
+  return "low";
+}
+
 function tacticalSlotIndexFromState(stateId) {
   const index = TACTICAL_SLOT_IDS.indexOf(stateId);
   return index === -1 ? null : index;
@@ -98,6 +153,8 @@ export function useStateMachine(initialState = "OFF") {
   const [level, setLevel] = useState(0); // 0 = off, 1-150 = on
   const [rampStyle, setRampStyle] = useState("smooth"); // "smooth" | "stepped"
   const [tacticalSlots, setTacticalSlots] = useState(() => [...DEFAULT_TACTICAL_SLOTS]);
+  const [beaconSeconds, setBeaconSeconds] = useState(10);
+  const [postOffVoltageActive, setPostOffVoltageActive] = useState(false);
 
   // ── Per-UI config state ────────────────────────────────────────────────────
   const [advancedConfig, setAdvancedConfig] = useState(() => ({ ...DEFAULT_ADVANCED_CONFIG }));
@@ -109,6 +166,12 @@ export function useStateMachine(initialState = "OFF") {
   const tacticalSlotsRef = useRef(DEFAULT_TACTICAL_SLOTS);
   const rampTimer     = useRef(null);
   const rampDirection = useRef(null); // "up" | "down"
+  const smoothStepTimer = useRef(null);
+  const rampStartDelayTimer = useRef(null);
+  const lastRampReleaseAt = useRef(0);
+  const lastOnLevelRef = useRef(75);
+  const previousStateRef = useRef(initialState);
+  const postOffVoltageTimer = useRef(null);
 
   // Active config ref — updated every render so intervals always read fresh values
   const rampBoundsRef = useRef({ ...DEFAULT_SIMPLE_CONFIG });
@@ -135,11 +198,11 @@ export function useStateMachine(initialState = "OFF") {
 
   // ── Config update helpers ──────────────────────────────────────────────────
   const updateAdvancedConfig = useCallback((updates) => {
-    setAdvancedConfig((prev) => ({ ...prev, ...updates }));
+    setAdvancedConfig((prev) => applyRampConfigUpdates(prev, updates));
   }, []);
 
   const updateSimpleConfig = useCallback((updates) => {
-    setSimpleConfig((prev) => ({ ...prev, ...updates }));
+    setSimpleConfig((prev) => applyRampConfigUpdates(prev, updates));
   }, []);
 
   const updateTacticalSlot = useCallback((slotIndex, value) => {
@@ -150,9 +213,76 @@ export function useStateMachine(initialState = "OFF") {
     });
   }, []);
 
+  const updateBeaconSeconds = useCallback((seconds) => {
+    const next = Math.max(1, Math.min(255, Math.round(seconds || 1)));
+    setBeaconSeconds(next);
+    setLastAction(`Beacon interval set to ${next}s`);
+  }, []);
+
+  const clearPostOffVoltage = useCallback(() => {
+    if (postOffVoltageTimer.current) {
+      clearTimeout(postOffVoltageTimer.current);
+      postOffVoltageTimer.current = null;
+    }
+    setPostOffVoltageActive(false);
+  }, []);
+
+  const stopSmoothStep = useCallback(() => {
+    if (smoothStepTimer.current) {
+      clearTimeout(smoothStepTimer.current);
+      smoothStepTimer.current = null;
+    }
+  }, []);
+
+  const setLevelSmooth = useCallback((targetLevel) => {
+    stopSmoothStep();
+    const target = Math.max(0, Math.min(MAX_LEVEL, Math.round(targetLevel)));
+    const cfg = rampBoundsRef.current;
+
+    if (!cfg.smoothSteps) {
+      setLevel(target);
+      return;
+    }
+
+    setLevel((start) => {
+      let actual = Math.max(0, Math.min(MAX_LEVEL, Math.round(start)));
+      const smoothStart = actual;
+
+      if (actual === target) return target;
+
+      const tick = () => {
+        if (actual === target) {
+          smoothStepTimer.current = null;
+          setLevel(target);
+          return;
+        }
+
+        if (target > actual) {
+          const diff = target - actual;
+          actual += Math.max(1, Math.floor(diff / SMOOTH_STEP_SPEED));
+          if (actual > target) actual = target;
+          setLevel(actual);
+          smoothStepTimer.current = setTimeout(tick, 10);
+        } else {
+          const diff = Math.max(1, smoothStart - target);
+          const delay = 1 + (30 * SMOOTH_STEP_SPEED / diff);
+          actual -= 1;
+          if (actual < target) actual = target;
+          setLevel(actual);
+          smoothStepTimer.current = setTimeout(tick, delay);
+        }
+      };
+
+      smoothStepTimer.current = setTimeout(tick, 10);
+      return actual;
+    });
+  }, [stopSmoothStep]);
+
   // ── Factory reset side-effects ────────────────────────────────────────────
   useEffect(() => {
     if (currentState !== "FACTORY_RESET") return;
+    clearPostOffVoltage();
+    stopSmoothStep();
     setUiMode("simple");
     setRampStyle("smooth");
     setAuxOff({ pattern: 2, color: 9 });
@@ -160,6 +290,7 @@ export function useStateMachine(initialState = "OFF") {
     setAdvancedConfig({ ...DEFAULT_ADVANCED_CONFIG });
     setSimpleConfig({ ...DEFAULT_SIMPLE_CONFIG });
     setTacticalSlots([...DEFAULT_TACTICAL_SLOTS]);
+    setBeaconSeconds(10);
     memorizedLevelRef.current = 75;
     const id = setTimeout(() => {
       setCurrentState("OFF");
@@ -168,7 +299,48 @@ export function useStateMachine(initialState = "OFF") {
     }, 3000);
 
     return () => clearTimeout(id);
-  }, [currentState]);
+  }, [clearPostOffVoltage, currentState, stopSmoothStep]);
+
+  useEffect(() => {
+    if (currentState !== "OFF" && level > 0) {
+      lastOnLevelRef.current = level;
+    }
+  }, [currentState, level]);
+
+  useEffect(() => {
+    const previousState = previousStateRef.current;
+    previousStateRef.current = currentState;
+
+    if (currentState !== "OFF") {
+      clearPostOffVoltage();
+      return;
+    }
+
+    const seconds = advancedConfig.postOffVoltageSeconds ?? 4;
+    if (previousState === "OFF" || seconds <= 0) {
+      clearPostOffVoltage();
+      return;
+    }
+
+    const pattern = buttonAuxPatternForLevel(lastOnLevelRef.current, advancedConfig);
+    if (pattern === "off") {
+      clearPostOffVoltage();
+      return;
+    }
+
+    setPostOffVoltageActive(true);
+    if (postOffVoltageTimer.current) clearTimeout(postOffVoltageTimer.current);
+    postOffVoltageTimer.current = setTimeout(() => {
+      postOffVoltageTimer.current = null;
+      setPostOffVoltageActive(false);
+    }, seconds * 1000);
+  }, [
+    advancedConfig.auxHighRampLevel,
+    advancedConfig.auxLowRampLevel,
+    advancedConfig.postOffVoltageSeconds,
+    clearPostOffVoltage,
+    currentState,
+  ]);
 
   // ── Main input handler ────────────────────────────────────────────────────
   const handleInput = useCallback(
@@ -264,24 +436,39 @@ export function useStateMachine(initialState = "OFF") {
           }
         }
 
-        if (result.transition?.rampEffect) {
+        if (result.transition?.beaconEffect) {
+          // Beacon timing is configured by holding the physical button.
+
+        } else if (result.transition?.rampEffect && !result.transition?.rampAfterMoon) {
           // Stepped mode: skip nudge — startRamp will jump to the first step immediately
           if (rampStyleRef.current !== "stepped") {
+            const requestedDirection = result.transition.rampEffect;
+            const shouldReverseUp =
+              requestedDirection === "up" &&
+              (
+                levelRef.current >= cfg.ceilLevel ||
+                Date.now() - lastRampReleaseAt.current < RAMP_REVERSE_WINDOW_MS
+              );
+            const rampEffect = shouldReverseUp ? "down" : requestedDirection;
+            stopSmoothStep();
             setLevel((prev) => {
               const cur = prev || 75;
-              return result.transition.rampEffect === "up"
+              return rampEffect === "up"
                 ? Math.min(cur + 10, cfg.ceilLevel)
                 : Math.max(cur - 10, cfg.floorLevel);
             });
           }
         } else if (result.transition?.tacticalSlot !== undefined) {
           const tacticalValue = tacticalSlotsRef.current[result.transition.tacticalSlot] ?? 0;
-          setLevel(tacticalValue >= 1 && tacticalValue <= 150 ? tacticalValue : 75);
+          setLevelSmooth(tacticalValue >= 1 && tacticalValue <= 150 ? tacticalValue : 75);
         } else if (result.transition?.brightnessHint) {
           let targetLevel = resolveHint(result.transition.brightnessHint, cfg);
 
+          if (input === "1H" && currentState === "LOCKOUT") {
+            targetLevel = Math.min(advancedConfig.floorLevel, simpleConfig.floorLevel);
+
           // Turbo-style overrides for specific inputs
-          if (input === "2C" && currentState === "RAMP") {
+          } else if (input === "2C" && currentState === "RAMP") {
             if (levelRef.current >= cfg.turboLevel) {
               // Already at turbo: toggle back to ceil
               targetLevel = cfg.ceilLevel;
@@ -304,13 +491,21 @@ export function useStateMachine(initialState = "OFF") {
             }
           }
 
-          setLevel(targetLevel);
+          if (result.transition?.rampAfterMoon) {
+            stopSmoothStep();
+            setLevel(targetLevel);
+          } else {
+            setLevelSmooth(targetLevel);
+          }
         } else if (targetInfo?.brightness === 0) {
-          setLevel(0);
+          setLevelSmooth(0);
+        } else if (MEMORIZED_BLINKY_STATES.has(result.state)) {
+          setLevelSmooth(memorizedLevelRef.current ?? cfg.floorLevel);
         } else if (RAMP_LIKE_STATES.has(result.state) && !RAMP_LIKE_STATES.has(currentState)) {
           // Entering ramp from outside (e.g. 1C from OFF): use memorized level
-          setLevel(memorizedLevelRef.current ?? cfg.floorLevel);
+          setLevelSmooth(memorizedLevelRef.current ?? cfg.floorLevel);
         } else {
+          stopSmoothStep();
           setLevel((prev) => {
             if (RAMP_LIKE_STATES.has(result.state) && prev > 0) return prev;
             return Math.round((targetInfo.brightness / 100) * MAX_LEVEL) || 1;
@@ -331,53 +526,79 @@ export function useStateMachine(initialState = "OFF") {
       }
       return result;
     },
-    [currentState, uiMode]
+    [advancedConfig.floorLevel, currentState, setLevelSmooth, simpleConfig.floorLevel, stopSmoothStep, uiMode]
   );
 
   // ── Continuous ramping ─────────────────────────────────────────────────────
-  const stopRamp = useCallback(() => {
+  const stopRamp = useCallback((recordRelease = true) => {
+    if (rampStartDelayTimer.current) {
+      clearTimeout(rampStartDelayTimer.current);
+      rampStartDelayTimer.current = null;
+    }
     if (rampTimer.current) {
       clearInterval(rampTimer.current);
       rampTimer.current = null;
     }
+    stopSmoothStep();
     rampDirection.current = null;
-  }, []);
-
-  const startRamp = useCallback((direction) => {
-    stopRamp();
-    rampDirection.current = direction;
-
-    if (rampStyleRef.current === "stepped") {
-      // Stepped mode: jump to the next step, then repeat every 500ms
-      const doStep = () => {
-        setLevel((prev) => {
-          const cfg   = rampBoundsRef.current;
-          const steps = computeStepLevels(cfg.floorLevel, cfg.ceilLevel, cfg.stepCount);
-          const cur   = prev || cfg.floorLevel;
-          if (direction === "up") {
-            const next = steps.find((s) => s > cur);
-            return next !== undefined ? next : cfg.ceilLevel;
-          } else {
-            const next = [...steps].reverse().find((s) => s < cur);
-            return next !== undefined ? next : cfg.floorLevel;
-          }
-        });
-      };
-      doStep(); // Immediate first step
-      rampTimer.current = setInterval(doStep, STEPPED_INTERVAL_MS);
-    } else {
-      // Smooth mode: increment by 1 every ~17ms, clamped to floor/ceil
-      rampTimer.current = setInterval(() => {
-        setLevel((prev) => {
-          const cur = prev || 75;
-          const cfg = rampBoundsRef.current;
-          return direction === "up"
-            ? Math.min(cur + 1, cfg.ceilLevel)
-            : Math.max(cur - 1, cfg.floorLevel);
-        });
-      }, RAMP_INTERVAL_MS);
+    if (recordRelease) {
+      lastRampReleaseAt.current = Date.now();
     }
-  }, [stopRamp]);
+  }, [stopSmoothStep]);
+
+  const startRamp = useCallback((direction, transition = {}) => {
+    stopRamp(false);
+
+    if (transition.rampAfterMoon && !rampBoundsRef.current.rampAfterMoon) {
+      return;
+    }
+
+    const begin = () => {
+      rampStartDelayTimer.current = null;
+      const cfg = rampBoundsRef.current;
+      const shouldReverseFromCeiling = levelRef.current >= cfg.ceilLevel;
+      const shouldReverseFromRecentRelease =
+        !transition.rampAfterMoon && Date.now() - lastRampReleaseAt.current < RAMP_REVERSE_WINDOW_MS;
+      const activeDirection =
+        direction === "up" && (shouldReverseFromCeiling || shouldReverseFromRecentRelease)
+          ? "down"
+          : direction;
+      rampDirection.current = activeDirection;
+
+      if (rampStyleRef.current === "stepped") {
+        // Stepped mode: jump to the next step, then repeat every 500ms
+        const doStep = () => {
+          const stepCfg = rampBoundsRef.current;
+          const steps = computeStepLevels(stepCfg.floorLevel, stepCfg.ceilLevel, stepCfg.stepCount);
+          const cur = levelRef.current || stepCfg.floorLevel;
+          const next = activeDirection === "up"
+            ? steps.find((s) => s > cur)
+            : [...steps].reverse().find((s) => s < cur);
+          setLevelSmooth(next !== undefined ? next : activeDirection === "up" ? stepCfg.ceilLevel : stepCfg.floorLevel);
+        };
+        doStep(); // Immediate first step
+        rampTimer.current = setInterval(doStep, STEPPED_INTERVAL_MS);
+      } else {
+        // Smooth mode: configured full-range duration from floor to ceiling.
+        rampTimer.current = setInterval(() => {
+          setLevel((prev) => {
+            const cur = prev || 75;
+            const smoothCfg = rampBoundsRef.current;
+            return activeDirection === "up"
+              ? Math.min(cur + 1, smoothCfg.ceilLevel)
+              : Math.max(cur - 1, smoothCfg.floorLevel);
+          });
+        }, rampIntervalMs(rampBoundsRef.current));
+      }
+    };
+
+    const delayMs = Math.max(0, transition.rampDelayMs || 0);
+    if (delayMs > 0) {
+      rampStartDelayTimer.current = setTimeout(begin, delayMs);
+    } else {
+      begin();
+    }
+  }, [setLevelSmooth, stopRamp]);
 
   // ── Momentary-state return ─────────────────────────────────────────────────
   // Called by useButtonInput on hold-end, restoring state+level for momentary transitions.
@@ -443,7 +664,14 @@ export function useStateMachine(initialState = "OFF") {
       if (info) {
         setCurrentState(nodeId);
         setLastAction(`Jumped to ${info.name}`);
-        setLevel(info.brightness === 0 ? 0 : Math.round((info.brightness / 100) * MAX_LEVEL) || 1);
+        const targetLevel = MEMORIZED_BLINKY_STATES.has(nodeId)
+          ? (memorizedLevelRef.current ?? rampBoundsRef.current.floorLevel)
+          : info.brightness === 0 ? 0 : Math.round((info.brightness / 100) * MAX_LEVEL) || 1;
+        if (info.brightness === 0) {
+          setLevelSmooth(0);
+        } else {
+          setLevelSmooth(targetLevel);
+        }
         setHistory((prev) => [
           ...prev.slice(-19),
           {
@@ -463,7 +691,7 @@ export function useStateMachine(initialState = "OFF") {
         }
       }
     },
-    [currentState]
+    [currentState, setLevelSmooth, stopSmoothStep]
   );
 
   const availableTransitions = getAvailableTransitions(currentState, uiMode);
@@ -479,16 +707,43 @@ export function useStateMachine(initialState = "OFF") {
     const isOffLike = AUX_OFF_STATES.has(currentState);
     const isLockoutLike = AUX_LOCKOUT_STATES.has(currentState);
     if (!isOffLike && !isLockoutLike) return null;
+
+    if (currentState === "OFF" && postOffVoltageActive) {
+      const pattern = buttonAuxPatternForLevel(lastOnLevelRef.current, advancedConfig);
+      return {
+        color: resolveAuxColor("voltage"),
+        colorName: "voltage",
+        pattern,
+      };
+    }
+
     const settings    = isLockoutLike ? auxLockout : auxOff;
     const patternName = AUX_PATTERNS[settings.pattern];
     if (patternName === "off") return { color: null, colorName: null, pattern: "off" };
     const colorName   = AUX_COLORS[settings.color];
     return {
-      color:     AUX_COLOR_HEX[colorName],
+      color:     resolveAuxColor(colorName),
       colorName,
       pattern:   patternName,
     };
-  }, [currentState, auxOff, auxLockout]);
+  }, [
+    advancedConfig,
+    auxOff,
+    auxLockout,
+    currentState,
+    postOffVoltageActive,
+  ]);
+
+  const buttonAuxDisplay = useMemo(() => {
+    if (level <= 0) return null;
+    const pattern = buttonAuxPatternForLevel(level, advancedConfig);
+    if (pattern === "off") return null;
+    return {
+      color: BUTTON_AUX_COLOR,
+      colorName: "button",
+      pattern,
+    };
+  }, [advancedConfig, level]);
 
   return {
     currentState,
@@ -507,6 +762,7 @@ export function useStateMachine(initialState = "OFF") {
     goToState,
     history,
     auxDisplay,
+    buttonAuxDisplay,
     auxPatternIndex: auxOff.pattern,
     auxColorIndex:   auxOff.color,
     lockoutAuxPatternIndex: auxLockout.pattern,
@@ -519,6 +775,8 @@ export function useStateMachine(initialState = "OFF") {
     tacticalSlots,
     updateTacticalSlot,
     activeTacticalStrobeId,
+    beaconSeconds,
+    updateBeaconSeconds,
     // Sunset timer
     sunsetSeconds,
     addSunsetMinutes,

@@ -51,6 +51,7 @@ export function useConfigMenu() {
   const addTenFlashTimerRef = useRef(null);
   const presentationFlashActiveRef = useRef(false);
   const acceptAfterFlashRef = useRef(false);
+  const pressActiveRef = useRef(false);
 
   // ── Animation helpers ─────────────────────────────────────────────────────
 
@@ -89,6 +90,7 @@ export function useConfigMenu() {
     const results = sessionRef.current?.results ?? [];
     sessionRef.current = null;
     isHeldRef.current = false;
+    pressActiveRef.current = false;
     presentationFlashActiveRef.current = false;
     acceptAfterFlashRef.current = false;
     setConfigLevel(null);
@@ -211,6 +213,7 @@ export function useConfigMenu() {
 
     onCompleteRef.current = onComplete;
     isHeldRef.current = buttonAlreadyHeld;
+    pressActiveRef.current = buttonAlreadyHeld;
     presentationFlashActiveRef.current = false;
     acceptAfterFlashRef.current = false;
     const session = createConfigSession(itemCount);
@@ -227,6 +230,7 @@ export function useConfigMenu() {
     if (!s) return;
 
     // Reset held flag for this new press.
+    pressActiveRef.current = true;
     isHeldRef.current = false;
     clearTimeout(holdTimerRef.current);
     clearTimeout(holdVisualTimerRef.current);
@@ -270,6 +274,8 @@ export function useConfigMenu() {
   const onRelease = useCallback(() => {
     const s = sessionRef.current;
     if (!s) return;
+    if (!pressActiveRef.current) return;
+    pressActiveRef.current = false;
 
     clearTimeout(holdTimerRef.current);
     holdTimerRef.current = null;

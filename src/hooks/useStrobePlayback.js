@@ -9,6 +9,8 @@ const STROBE_STATES = new Set([
   "BIKE_FLASHER",
 ]);
 
+const BLINKY_PLAYBACK_STATES = new Set(["BEACON", "SOS"]);
+
 const MAX_LEVEL = 150;
 const STROBE_OFF_LEVEL = 0;
 const STROBE_BRIGHTNESS = 150;
@@ -16,6 +18,8 @@ const PARTY_STROBE_BRIGHTNESS = 90;
 const CANDLE_AMPLITUDE = 45;
 const CANDLE_TICK_MS = 50;
 const FRAME_MS = 16;
+const BEACON_ON_MS = 100;
+const DIT_LENGTH_MS = 200;
 
 function clampLevel(level) {
   return Math.max(1, Math.min(MAX_LEVEL, Math.round(level || 75)));
@@ -44,11 +48,11 @@ function auxDisplay(colorName) {
   return { pattern: "high", colorName, color };
 }
 
-export function useStrobePlayback(currentState, level) {
+export function useStrobePlayback(currentState, level, { beaconSeconds = 10 } = {}) {
   const [playback, setPlayback] = useState({ level: null, auxDisplay: null });
 
   useEffect(() => {
-    if (!STROBE_STATES.has(currentState)) {
+    if (!STROBE_STATES.has(currentState) && !BLINKY_PLAYBACK_STATES.has(currentState)) {
       return;
     }
 
@@ -180,6 +184,37 @@ export function useStrobePlayback(currentState, level) {
       }
     }
 
+    async function beaconMode() {
+      const base = clampLevel(level);
+      const offMs = Math.max(0, Math.round(beaconSeconds * 1000) - BEACON_ON_MS);
+      while (!cancelled) {
+        setIfActive(base);
+        await wait(BEACON_ON_MS);
+        setIfActive(STROBE_OFF_LEVEL);
+        await wait(offMs);
+      }
+    }
+
+    async function sosMode() {
+      const base = clampLevel(level);
+
+      const sosBlink = async (count, isDah) => {
+        for (let i = 0; i < count && !cancelled; i += 1) {
+          setIfActive(base);
+          await wait(isDah ? DIT_LENGTH_MS * 3 : DIT_LENGTH_MS);
+          setIfActive(STROBE_OFF_LEVEL);
+          await wait(DIT_LENGTH_MS);
+        }
+      };
+
+      while (!cancelled) {
+        await sosBlink(3, false);
+        await sosBlink(3, true);
+        await sosBlink(3, false);
+        await wait(2000);
+      }
+    }
+
     const runners = {
       PARTY_STROBE: partyStrobe,
       TACTICAL_STROBE: tacticalStrobe,
@@ -187,6 +222,8 @@ export function useStrobePlayback(currentState, level) {
       LIGHTNING: lightningStorm,
       CANDLE: candleMode,
       BIKE_FLASHER: bikeFlasher,
+      BEACON: beaconMode,
+      SOS: sosMode,
     };
 
     runners[currentState]?.();
@@ -196,7 +233,7 @@ export function useStrobePlayback(currentState, level) {
       clearTimeout(timer);
       setPlayback({ level: null, auxDisplay: null });
     };
-  }, [currentState, level]);
+  }, [beaconSeconds, currentState, level]);
 
   return playback;
 }

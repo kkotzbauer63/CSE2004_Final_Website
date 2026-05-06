@@ -13,7 +13,7 @@ export const OFF = {
 
   transitions: [
     { action: "1C",  target: "RAMP",             ui: UI.ANY,    kind: TRANSITION_KIND.NAVIGATE,  description: "On (ramp mode, memorized level)",                 condition: null },
-    { action: "1H",  target: "RAMP",             ui: UI.ANY,    kind: TRANSITION_KIND.NAVIGATE,  description: "On at floor level; keep holding to ramp up",     condition: null, brightnessHint: "floor" },
+    { action: "1H",  target: "RAMP",             ui: UI.ANY,    kind: TRANSITION_KIND.NAVIGATE,  description: "On at floor level; keep holding to ramp up",     condition: null, brightnessHint: "floor", rampEffect: "up", rampAfterMoon: true, rampDelayMs: 500 },
     { action: "2C",  target: "RAMP",             ui: UI.ANY,    kind: TRANSITION_KIND.NAVIGATE,  description: "On at ceiling level",                             condition: null, brightnessHint: "ceiling" },
     { action: "2H",  target: "RAMP",             ui: UI.SIMPLE, kind: TRANSITION_KIND.MOMENTARY, description: "Momentary ceiling (release to turn off)",         condition: null, brightnessHint: "ceiling", momentary: true },
     { action: "2H",  target: "RAMP",             ui: UI.FULL,   kind: TRANSITION_KIND.MOMENTARY, description: "Momentary turbo (release to turn off)",           condition: null, brightnessHint: "turbo",   momentary: true },

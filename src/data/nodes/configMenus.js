@@ -23,12 +23,12 @@ export const RAMP_CONFIG = {
   menuVariants: {
     smooth: [
       { position: 1, name: "Floor level",  default: "1/150",    valueScheme: "clicks = ramp level" },
-      { position: 2, name: "Ceiling level",default: "120/150",  valueScheme: "clicks down from max" },
+      { position: 2, name: "Ceiling level",default: "120/150",  valueScheme: "clicks = ramp level" },
       { position: 3, name: "Ramp speed",   default: 1,          valueScheme: "1=fastest (~2.5s), 4=slowest (~10s)" },
     ],
     stepped: [
       { position: 1, name: "Floor level",    default: "20/150",  valueScheme: "clicks = ramp level" },
-      { position: 2, name: "Ceiling level",  default: "120/150", valueScheme: "clicks down from max" },
+      { position: 2, name: "Ceiling level",  default: "120/150", valueScheme: "clicks = ramp level" },
       { position: 3, name: "Number of steps",default: 7,         valueScheme: "1–150" },
     ],
   },
@@ -77,7 +77,7 @@ export const SIMPLE_UI_CONFIG = {
   returnsTo: "OFF",
   menuItems: [
     { position: 1, name: "Floor level",    default: "20/150", valueScheme: "clicks = ramp level" },
-    { position: 2, name: "Ceiling level",  default: "120/150",valueScheme: "clicks down from max" },
+    { position: 2, name: "Ceiling level",  default: "120/150",valueScheme: "clicks = ramp level" },
     { position: 3, name: "Number of steps",default: 5,        valueScheme: "1–150" },
     { position: 4, name: "Turbo style",    default: 0,        valueScheme: "0 = no turbo, 1–2 = turbo style" },
   ],
@@ -102,8 +102,8 @@ export const VOLTAGE_CONFIG = {
   menuItems: [
     { position: 1, name: "Voltage correction",      default: 7, valueScheme: "1–13 clicks (7 = 0V offset; each step ±0.05V)" },
     { position: 2, name: "Post-off display timeout",default: 4, valueScheme: "clicks = seconds (0 = disabled)" },
-    { position: 3, name: "Aux low ramp level",      default: 0, valueScheme: "ramp level below which button LEDs stay off (0 = always off)" },
-    { position: 4, name: "Aux high ramp level",     default: 0, valueScheme: "ramp level above which button LEDs go high (0 = disabled)" },
+    { position: 3, name: "Aux low ramp level",      default: 1, valueScheme: "ramp level below which button LEDs stay off (0 = always off)" },
+    { position: 4, name: "Aux high ramp level",     default: 75, valueScheme: "ramp level above which button LEDs go high (0 = disabled)" },
   ],
   transitions: [
     { action: "1C", target: "BATTERY_CHECK", ui: UI.FULL, kind: TRANSITION_KIND.NAVIGATE, description: "Exit config (return to Battery Check)", condition: null },

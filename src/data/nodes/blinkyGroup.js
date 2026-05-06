@@ -74,7 +74,7 @@ export const BEACON = {
 
   transitions: [
     { action: "1C", target: "OFF", ui: UI.FULL, kind: TRANSITION_KIND.NAVIGATE, description: "Off",                            condition: null },
-    { action: "1H", target: "_self", ui: UI.FULL, kind: TRANSITION_KIND.INTERNAL, description: "Configure beacon timing",      condition: null },
+    { action: "1H", target: "_self", ui: UI.FULL, kind: TRANSITION_KIND.INTERNAL, description: "Configure beacon timing",      condition: null, beaconEffect: "timing" },
     { action: "2C", target: "SOS", ui: UI.FULL, kind: TRANSITION_KIND.NAVIGATE, description: "Next blinky mode (SOS)",        condition: null },
   ],
 };

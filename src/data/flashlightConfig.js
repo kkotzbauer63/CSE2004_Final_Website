@@ -29,6 +29,11 @@ export const DEFAULT_ADVANCED_CONFIG = Object.freeze({
   turboStyle:  TURBO_STYLE.A2,
   rampSpeed:   1,           // smooth ramp: 1=fastest (~2.5s), 4=slowest (~10s)
   stepCount:   7,           // stepped ramp: number of discrete steps
+  smoothSteps: true,        // animate jumps to ramp targets
+  rampAfterMoon: true,      // 1H from off pauses at floor, then ramps up
+  postOffVoltageSeconds: 4, // RGB aux voltage display duration after turning off
+  auxLowRampLevel: 1,       // button aux low threshold while main LEDs are on
+  auxHighRampLevel: 75,     // button aux high threshold while main LEDs are on
   memoryMode:  "auto",      // "auto" = last-used level, "manual" = saved level (10C)
 });
 
@@ -38,6 +43,11 @@ export const DEFAULT_SIMPLE_CONFIG = Object.freeze({
   turboLevel:  150,
   turboStyle:  TURBO_STYLE.NONE,  // Simple UI hides turbo by default
   stepCount:   5,
+  smoothSteps: true,
+  rampAfterMoon: true,
+  postOffVoltageSeconds: 4,
+  auxLowRampLevel: 1,
+  auxHighRampLevel: 75,
   memoryMode:  "auto",
 });
 
@@ -46,18 +56,20 @@ export const DEFAULT_SIMPLE_CONFIG = Object.freeze({
 // null entries mean that menu item does not affect the config store.
 // compute(v) converts the raw click-count accumulated in the menu to the actual value.
 
+const clampRampLevel = (v, fallback = 1) => Math.max(1, Math.min(150, v || fallback));
+
 export const RAMP_CONFIG_SCHEMA = {
   smooth: [
     // Position 1: Floor level — direct ramp level (clicks = level)
-    { key: 'floorLevel', compute: (v) => Math.max(1, Math.min(150, v || 1)) },
-    // Position 2: Ceiling level — "clicks down from max" (Anduril convention)
-    { key: 'ceilLevel',  compute: (v) => Math.max(1, Math.min(150, 151 - Math.max(1, v))) },
+    { key: 'floorLevel', compute: (v) => clampRampLevel(v, 1) },
+    // Position 2: Ceiling level — direct ramp level in this simulator.
+    { key: 'ceilLevel',  compute: (v) => clampRampLevel(v, 150) },
     // Position 3: Ramp speed (smooth only) — 1=fastest, 4=slowest
     { key: 'rampSpeed',  compute: (v) => Math.max(1, Math.min(4, v || 1)) },
   ],
   stepped: [
-    { key: 'floorLevel', compute: (v) => Math.max(1, Math.min(150, v || 1)) },
-    { key: 'ceilLevel',  compute: (v) => Math.max(1, Math.min(150, 151 - Math.max(1, v))) },
+    { key: 'floorLevel', compute: (v) => clampRampLevel(v, 1) },
+    { key: 'ceilLevel',  compute: (v) => clampRampLevel(v, 150) },
     // Position 3: Number of steps (stepped only)
     { key: 'stepCount',  compute: (v) => Math.max(1, Math.min(150, v || 7)) },
   ],
@@ -67,21 +79,30 @@ export const RAMP_EXTRAS_SCHEMA = [
   // itemIndex 0 (position 1): 1C disables manual memory; 0C or any other value leaves it unchanged.
   { key: 'memoryMode', compute: (v) => v === 1 ? "auto" : undefined },
   null,  // itemIndex 1 (position 2): manual memory timer — no config store effect
-  null,  // itemIndex 2 (position 3): ramp-after-moon style — no config store effect
+  // itemIndex 2 (position 3): ramp-after-moon style
+  { key: 'rampAfterMoon', compute: (v) => v === 0 ? true : v === 1 ? false : undefined },
   // itemIndex 3 (position 4): turbo style
   { key: 'turboStyle', compute: (v) => Math.max(0, Math.min(2, v)) },
-  null,  // itemIndex 4 (position 5): smooth steps — no config store effect
+  // itemIndex 4 (position 5): smooth steps
+  { key: 'smoothSteps', compute: (v) => v === 0 ? false : v === 1 ? true : undefined },
 ];
 
 export const SIMPLE_UI_CONFIG_SCHEMA = [
   // itemIndex 0 (position 1): floor level
-  { key: 'floorLevel', compute: (v) => Math.max(1, Math.min(150, v || 1)) },
-  // itemIndex 1 (position 2): ceiling level — "clicks down from max"
-  { key: 'ceilLevel',  compute: (v) => Math.max(1, Math.min(150, 151 - Math.max(1, v))) },
+  { key: 'floorLevel', compute: (v) => clampRampLevel(v, 1) },
+  // itemIndex 1 (position 2): ceiling level
+  { key: 'ceilLevel',  compute: (v) => clampRampLevel(v, 150) },
   // itemIndex 2 (position 3): step count
   { key: 'stepCount',  compute: (v) => Math.max(1, Math.min(150, v || 5)) },
   // itemIndex 3 (position 4): turbo style
   { key: 'turboStyle', compute: (v) => Math.max(0, Math.min(2, v)) },
+];
+
+export const VOLTAGE_CONFIG_SCHEMA = [
+  null, // itemIndex 0 (position 1): voltage correction is not simulated yet
+  { key: 'postOffVoltageSeconds', compute: (v) => Math.max(0, Math.min(255, v)) },
+  { key: 'auxLowRampLevel', compute: (v) => Math.max(0, Math.min(150, v)) },
+  { key: 'auxHighRampLevel', compute: (v) => Math.max(0, Math.min(150, v)) },
 ];
 
 // ── Utility: compute step level values ───────────────────────────────────────

@@ -15,6 +15,7 @@ import {
   RAMP_CONFIG_SCHEMA,
   RAMP_EXTRAS_SCHEMA,
   SIMPLE_UI_CONFIG_SCHEMA,
+  VOLTAGE_CONFIG_SCHEMA,
 } from "./data/flashlightConfig.js";
 import FlashlightSimulator from "./components/FlashlightSimulator.jsx";
 import TransitionPanel from "./components/TransitionPanel.jsx";
@@ -62,6 +63,7 @@ export default function App() {
     goToState,
     history,
     auxDisplay,
+    buttonAuxDisplay,
     auxPatternIndex,
     auxColorIndex,
     lockoutAuxPatternIndex,
@@ -73,6 +75,8 @@ export default function App() {
     tacticalSlots,
     updateTacticalSlot,
     activeTacticalStrobeId,
+    beaconSeconds,
+    updateBeaconSeconds,
     sunsetSeconds,
     addSunsetMinutes,
     sunsetSpeedMultiplier,
@@ -105,12 +109,51 @@ export default function App() {
     goToState(nodeId);
   }, [goToState]);
 
+  const handlePreviewButtonInput = useCallback((input) => {
+    const previewNode = stateMapPreviewState ? nodeMap[stateMapPreviewState] : null;
+    if (!previewNode) return { state: currentState, action: null, transition: null };
+
+    if (input === "1C") {
+      setStateMapPreview(null);
+      return {
+        state: currentState,
+        action: "Returned to previous state map",
+        transition: null,
+      };
+    }
+
+    if (input === "1H" || input === previewNode.enteredVia) {
+      setStateMapPreview(null);
+      configStartButtonHeldRef.current = true;
+      goToState(previewNode.id);
+      return {
+        state: previewNode.id,
+        action: `Started ${previewNode.name}`,
+        transition: null,
+      };
+    }
+
+    return { state: currentState, action: null, transition: null };
+  }, [currentState, goToState, stateMapPreviewState]);
+
   // ── Normal button input (used when NOT in a config menu) ────────────────
   const { buttonHandlers, isButtonPressed, pendingInput, cancelInput } = useButtonInput({
     handleInput,
     startRamp,
     stopRamp,
     stopMomentary,
+  });
+
+  const {
+    buttonHandlers: previewButtonHandlers,
+    isButtonPressed: isPreviewButtonPressed,
+    pendingInput: previewPendingInput,
+    cancelInput: cancelPreviewInput,
+  } = useButtonInput({
+    handleInput: handlePreviewButtonInput,
+    startRamp: () => {},
+    stopRamp: () => {},
+    stopMomentary: () => {},
   });
 
   // ── Readout flash sequences (battery / temp / version) ──────────────────
@@ -138,6 +181,9 @@ export default function App() {
     onPress:      configPress,
     onRelease:    configRelease,
   } = useConfigMenu();
+  const [configBtnPressed, setConfigBtnPressed] = useState(false);
+  const configBtnPressedRef = useRef(false);
+  const configStartButtonHeldRef = useRef(false);
 
   // Keep a ref to isButtonPressed so the effect can read it without re-running
   const isButtonPressedRef = useRef(false);
@@ -163,9 +209,14 @@ export default function App() {
     const node = nodeMap[currentState];
     if (node?.type !== NODE_TYPE.CONFIG_MENU) return;
 
+    cancelPreviewInput();
     cancelInput();
 
     menuEntryRef.current = { menuState: currentState, rampStyle };
+    const buttonAlreadyHeld = isButtonPressedRef.current || configStartButtonHeldRef.current;
+    // eslint-disable-next-line react-hooks/immutability
+    configStartButtonHeldRef.current = false;
+    configBtnPressedRef.current = buttonAlreadyHeld;
 
     const itemCount = getItemCount(node);
     const returnsTo = node.returnsTo ?? "OFF";
@@ -210,6 +261,9 @@ export default function App() {
         } else if (menuState === "SIMPLE_UI_CONFIG") {
           applyResults(SIMPLE_UI_CONFIG_SCHEMA, updateSimpleConfig);
 
+        } else if (menuState === "VOLTAGE_CONFIG") {
+          applyResults(VOLTAGE_CONFIG_SCHEMA, updateAdvancedConfig);
+
         } else if (menuState === "TACTICAL_CONFIG") {
           for (const result of results) {
             if (result.skipped) continue;
@@ -219,7 +273,7 @@ export default function App() {
 
         goToState(returnsTo);
       },
-      isButtonPressedRef.current,
+      buttonAlreadyHeld,
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentState]);
@@ -299,31 +353,83 @@ export default function App() {
     return () => clearTimeout(id);
   }, [currentState, goToState]);
 
+  // ── Beacon timing hold ─────────────────────────────────────────────────
+  const [beaconConfigLevel, setBeaconConfigLevel] = useState(null);
+  const beaconTimingRef = useRef({ active: false, pulses: 0, intervalId: null, flashId: null });
+
+  const stopBeaconTiming = useCallback((save) => {
+    const timing = beaconTimingRef.current;
+    if (!timing.active) return;
+
+    clearInterval(timing.intervalId);
+    clearTimeout(timing.flashId);
+    setBeaconConfigLevel(null);
+
+    if (save) updateBeaconSeconds(Math.max(1, timing.pulses));
+
+    beaconTimingRef.current = { active: false, pulses: 0, intervalId: null, flashId: null };
+  }, [updateBeaconSeconds]);
+
+  const beaconTimingBlink = useCallback(() => {
+    const timing = beaconTimingRef.current;
+    if (!timing.active) return;
+
+    timing.pulses += 1;
+    setBeaconConfigLevel(Math.max(1, levelRef.current || 75));
+    clearTimeout(timing.flashId);
+    timing.flashId = setTimeout(() => setBeaconConfigLevel(0), 100);
+  }, []);
+
+  useEffect(() => {
+    const isBeaconHold = currentState === "BEACON" && isButtonPressed && pendingInput?.holdDetected;
+    if (!isBeaconHold) {
+      if (beaconTimingRef.current.active && (!isButtonPressed || currentState !== "BEACON")) {
+        stopBeaconTiming(currentState === "BEACON");
+      }
+      return;
+    }
+
+    if (beaconTimingRef.current.active) return;
+    beaconTimingRef.current = { active: true, pulses: 0, intervalId: null, flashId: null };
+    beaconTimingBlink();
+    beaconTimingRef.current.intervalId = setInterval(beaconTimingBlink, 1000);
+
+    return () => {
+      if (currentState !== "BEACON") stopBeaconTiming(false);
+    };
+  }, [beaconTimingBlink, currentState, isButtonPressed, pendingInput?.holdDetected, stopBeaconTiming]);
+
   // ── Button handler routing ───────────────────────────────────────────────
   // When a config menu is active, raw press/release events go to useConfigMenu.
   // Track button visual separately so the flashlight button still animates.
-  const [configBtnPressed, setConfigBtnPressed] = useState(false);
-
   const configButtonHandlers = useMemo(() => ({
     onPointerDown: (e) => {
       e.preventDefault();
+      configBtnPressedRef.current = true;
       setConfigBtnPressed(true);
       configPress();
     },
     onPointerUp: (e) => {
       e.preventDefault();
+      if (!configBtnPressedRef.current) return;
+      configBtnPressedRef.current = false;
       setConfigBtnPressed(false);
       configRelease();
     },
     onPointerLeave: () => {
+      if (!configBtnPressedRef.current) return;
+      configBtnPressedRef.current = false;
       setConfigBtnPressed(false);
       configRelease();
     },
   }), [configPress, configRelease]);
 
-  const activeButtonHandlers = configActive ? configButtonHandlers : buttonHandlers;
-  const activeIsButtonPressed = configActive ? configBtnPressed : isButtonPressed;
-  const strobePlayback = useStrobePlayback(activeTacticalStrobeId ?? currentState, level);
+  const previewActive = !!stateMapPreviewState && !configActive;
+  const activeButtonHandlers = configActive ? configButtonHandlers : previewActive ? previewButtonHandlers : buttonHandlers;
+  const activeIsButtonPressed = configActive ? configBtnPressed : previewActive ? isPreviewButtonPressed : isButtonPressed;
+  const activePendingInput = configActive ? null : previewActive ? previewPendingInput : pendingInput;
+  const strobePlaybackState = beaconConfigLevel !== null ? null : (activeTacticalStrobeId ?? currentState);
+  const strobePlayback = useStrobePlayback(strobePlaybackState, level, { beaconSeconds });
 
   // ── Brightness override priority ─────────────────────────────────────────
   // Config menu > readout > sunset blink > strobe animation > normal state brightness
@@ -331,6 +437,7 @@ export default function App() {
     configActive      ? configLevel :
     readoutPlaying    ? readoutLevel :
     sunsetBlink       ? 0 :
+    beaconConfigLevel !== null ? beaconConfigLevel :
     strobePlayback.level !== null ? strobePlayback.level :
     null;
 
@@ -386,8 +493,9 @@ export default function App() {
             lastAction={lastAction}
             buttonHandlers={activeButtonHandlers}
             isButtonPressed={activeIsButtonPressed}
-            pendingInput={configActive ? null : pendingInput}
+            pendingInput={activePendingInput}
             auxDisplay={strobePlayback.auxDisplay ?? auxDisplay}
+            buttonAuxDisplay={strobePlayback.auxDisplay ? null : buttonAuxDisplay}
             readoutLevel={overrideLevel}
             configInfo={configInfo}
           />

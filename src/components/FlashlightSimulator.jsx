@@ -19,6 +19,7 @@ export default function FlashlightSimulator({
   isButtonPressed,
   pendingInput,
   auxDisplay,
+  buttonAuxDisplay,
   readoutLevel = null,  // Anduril level (0–150) from useReadout/useConfigMenu; overrides beam
   configInfo   = null,  // { phase, itemIndex, currentValue, node } from useConfigMenu
 }) {
@@ -91,16 +92,22 @@ export default function FlashlightSimulator({
     2;
   const auxOpacity = isOn ? 0 : auxLevelToOpacity(auxLevel);
   const showAux = auxOpacity > 0;
+  const buttonAuxLevel =
+    !isOn || !buttonAuxDisplay || buttonAuxDisplay.pattern === "off" ? 0 :
+    buttonAuxDisplay.pattern === "low" ? 1 :
+    2;
+  const buttonAuxOpacity = auxLevelToOpacity(buttonAuxLevel);
+  const showButtonAux = buttonAuxOpacity > 0;
+  const buttonAuxColor = buttonAuxDisplay?.color ?? "#D4A84B";
 
   // Button face: pressed → dark; on → amber; off → neutral, with aux layered above it.
   const buttonFill =
     isButtonPressed ? "#555"
-    : isOn          ? "#D4A84B"
     : "#d8d8d8";
 
   // Ring matches button color
-  const ringStroke  = isOn ? "#D4A84B" : showAux ? auxColor : "#a2e4ff";
-  const ringOpacity = isOn ? 0.9 : showAux ? 0.25 + auxOpacity * 0.6 : 0.35;
+  const ringStroke  = showButtonAux ? buttonAuxColor : showAux ? auxColor : "#a2e4ff";
+  const ringOpacity = showButtonAux ? 0.25 + buttonAuxOpacity * 0.6 : showAux ? 0.25 + auxOpacity * 0.6 : 0.35;
 
   return (
     <div className="simulator">
@@ -281,11 +288,11 @@ export default function FlashlightSimulator({
             style={{ cursor: "pointer", touchAction: "none", userSelect: "none" }}
           >
             {/* Soft glow behind button */}
-            {(isOn || showAux) && (
+            {(showButtonAux || showAux) && (
               <circle
                 cx="100" cy="100" r="27"
-                fill={isOn ? "#D4A84B" : auxColor}
-                opacity={isOn ? 0.18 : 0.18 * auxOpacity}
+                fill={showButtonAux ? buttonAuxColor : auxColor}
+                opacity={showButtonAux ? 0.18 * buttonAuxOpacity : 0.18 * auxOpacity}
                 pointerEvents="none"
               />
             )}
@@ -303,6 +310,14 @@ export default function FlashlightSimulator({
                 cx="100" cy="100" r="22"
                 fill={auxColor}
                 opacity={auxOpacity}
+                pointerEvents="none"
+              />
+            )}
+            {showButtonAux && (
+              <circle
+                cx="100" cy="100" r="22"
+                fill={buttonAuxColor}
+                opacity={buttonAuxOpacity}
                 pointerEvents="none"
               />
             )}
